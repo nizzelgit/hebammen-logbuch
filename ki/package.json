@@ -1,0 +1,15 @@
+{
+  "name": "hebammen-logbuch-ki",
+  "private": true,
+  "description": "Baut vendor/ki.bundle.js aus ki.js (Parakeet-Spracherkennung und optional WebLLM).",
+  "scripts": {
+    "build": "esbuild ki.js --bundle --format=esm --target=es2022 --minify --outfile=../vendor/ki.bundle.js"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "0.2.85",
+    "parakeet.js": "1.4.4"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0"
+  }
+}

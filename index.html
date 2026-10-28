@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hebammen-Logbuch</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#8a3a5c">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: eine Spalte fürs Handy, Navigationsleiste unten, Karten nur für Einträge und Frauen */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --fg: #1d2624;
+  --muted: #5d6b67;
+  --line: #d6dedb;
+  --accent: #8a3a5c;
+  --accent-soft: #f4e6ec;
+  --ok: #2f7a4f;
+  --warn: #9a6200;
+  --warn-soft: #fbf0d9;
+  --err: #b3261e;
+  --err-soft: #fbe3e1;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121816; --surface: #1b2321; --fg: #e4ebe8; --muted: #9aaaa5; --line: #2e3a37;
+  --accent: #e08bb0; --accent-soft: #3a2230; --ok: #6fcf97; --warn: #f2b84b; --warn-soft: #3a2e15;
+  --err: #ff8a80; --err-soft: #3d1c1a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121816; --surface: #1b2321; --fg: #e4ebe8; --muted: #9aaaa5; --line: #2e3a37;
+  --accent: #e08bb0; --accent-soft: #3a2230; --ok: #6fcf97; --warn: #f2b84b; --warn-soft: #3a2e15;
+  --err: #ff8a80; --err-soft: #3d1c1a; color-scheme: dark }
+
+* { box-sizing: border-box }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px) }
+[hidden] { display: none !important }
+button.mic { width: 100%; padding: 18px; font-size: 1.1rem; border-radius: 12px; background: var(--accent); border-color: var(--accent); color: var(--surface) }
+button.mic.on { background: var(--err); border-color: var(--err) }
+button.mic:disabled { opacity: .6 }
+.bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden }
+.bar span { display: block; height: 100%; background: var(--accent) }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.45; }
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 96px; display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15 }
+h1 { font-size: 1.6rem } h2 { font-size: 1.25rem } h3 { font-size: 1.05rem }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap }
+.top small { color: var(--muted) }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums }
+.muted { color: var(--muted) }
+.label { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted) }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0 }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px }
+label.f { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); min-width: 0 }
+input, select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; width: 100%; min-width: 0 }
+input[type=checkbox] { width: 20px; height: 20px; padding: 0; accent-color: var(--accent) }
+textarea { resize: vertical }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+button { font: inherit; font-weight: 700; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface) }
+button.primary:disabled { opacity: .5; cursor: not-allowed }
+button.ghost { background: transparent }
+button.small { padding: 6px 10px; font-size: .85rem }
+.seg { display: flex; flex-wrap: wrap; gap: 6px }
+.seg button { padding: 8px 10px; font-size: .85rem; font-weight: 400 }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--fg); font-weight: 700 }
+.checks { display: flex; flex-wrap: wrap; gap: 6px 14px }
+.checks label { display: flex; gap: 6px; align-items: center; font-size: .9rem }
+.banner { background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; font-size: .9rem; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between }
+.issue { border-radius: 6px; padding: 6px 10px; font-size: .88rem }
+.issue.err { background: var(--err-soft); color: var(--err) }
+.issue.warn { background: var(--warn-soft); color: var(--warn) }
+.issue.info { background: var(--accent-soft); color: var(--fg) }
+.pill { display: inline-block; font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor }
+.pill.ok { color: var(--ok) } .pill.warn { color: var(--warn) } .pill.err { color: var(--err) } .pill.acc { color: var(--accent) }
+.entry { display: grid; gap: 6px; border-left: 4px solid var(--line); padding-left: 10px }
+.entry.has-err { border-left-color: var(--err) } .entry.has-warn { border-left-color: var(--warn) } .entry.clean { border-left-color: var(--ok) }
+.entry-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap }
+.tbl-wrap { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: .9rem }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; white-space: nowrap }
+td.code { font-family: var(--f-data); font-weight: 500; color: var(--accent); white-space: nowrap }
+table.bogen th.c, table.bogen td.c { text-align: center; border-left: 1px solid var(--line) }
+table.bogen th.side, table.bogen td.side { border-left: 3px double var(--muted) }
+table.bogen tr.dash td { border-bottom: 1px dashed var(--muted) }
+tr.done td { opacity: .45 }
+tr.done td:first-child { opacity: 1 }
+.form-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px; font-size: .88rem; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px }
+.form-head span { color: var(--muted); font-size: .75rem; display: block }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); z-index: 5 }
+nav.tabs button { border: 0; border-radius: 0; background: transparent; padding: 12px 4px; font-size: .85rem; color: var(--muted); position: relative }
+nav.tabs button[aria-current="page"] { color: var(--accent) }
+nav.tabs button[aria-current="page"]::after { content: ""; position: absolute; left: 25%; right: 25%; top: 0; height: 3px; background: var(--accent); border-radius: 0 0 3px 3px }
+.count { font-family: var(--f-data); font-size: .7rem; background: var(--err); color: var(--surface); border-radius: 99px; padding: 0 6px; margin-left: 4px }
+.hint { font-size: .85rem; color: var(--muted) }
+.meter { display: flex; gap: 12px; flex-wrap: wrap; font-size: .85rem }
+@media (prefers-reduced-motion: no-preference) { button { transition: background .15s } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<nav class="tabs" id="tabs">
+  <button data-v="erfassen">Erfassen</button>
+  <button data-v="tage">Einträge</button>
+  <button data-v="frauen">Frauen</button>
+  <button data-v="buero">Bürotag</button>
+</nav>
+
+<script>
+/* ===== Regeln nach Hebammenhilfevertrag, Fassung gültig ab 01.04.2026, Vergütungsverzeichnis ===== */
+// Art der Leistungserbringung = 5. Stelle der GPOS und Eintrag 1–3 auf der Versichertenbestätigung
+const ARTS = { 1: "aufsuchend", 2: "nicht-aufsuchend", 3: "Video", 4: "Telefon-Kurzberatung" };
+// c = max. Minuten pro Kontakt je Art, day = max. Minuten pro Tag (Arten 1–3 zusammen), kurzDay = Kurzberatung pro Tag
+const LEISTUNGEN = {
+  ss_hilfe:  { label: "Hilfeleistung in der Schwangerschaft", short: "Hilfe SS", form: "ss", col: "101XX", base: "101", zuschlag: true,
+               arts: [1, 2, 3, 4], c: { 1: 90, 2: 90, 3: 30, 4: 10 }, day: 90, perDay: 2, videoMaxDay: 1, kurzTotal: 12, mehrling: false },
+  ss_vorsorge: { label: "Vorsorgeuntersuchung", short: "Vorsorge", form: "ss", col: "1020X", base: "1020", zuschlag: false,
+               arts: [1, 2], c: { 1: 30, 2: 30 }, day: 30, perDay: 1 },
+  ss_aufkl:  { label: "Aufklärungsgespräch Geburtsort", short: "Aufklärung Geburtsort", form: "ss", col: "1030X", base: "1030", zuschlag: false,
+               arts: [1, 2], c: { 1: 90, 2: 90 }, day: 90, perDay: 1, totalMin: 90, totalContacts: 2 },
+  ss_still:  { label: "Individuelle Stillvorbereitung", short: "Stillvorbereitung", form: "ss", col: "1040X", base: "1040", zuschlag: false,
+               arts: [1, 2], c: { 1: 45, 2: 45 }, day: 45, perDay: 1, totalContacts: 1 },
+  wb_frueh:  { label: "Frühes Wochenbett (bis 10. Lebenstag)", short: "Frühes WB", form: "wb", col: "301XX", base: "301", zuschlag: true,
+               arts: [1, 2, 3, 4], c: { 1: 90, 2: 90, 3: 30, 4: 10 }, day: 90, perDay: 2, videoOnlySecond: true, kurzPerDay: 1, totalContacts: 20, mehrling: true },
+  wb_spaet:  { label: "Spätes Wochenbett (11. Tag bis 12. Woche)", short: "Spätes WB", form: "wb", col: "303XX", base: "303", zuschlag: true,
+               arts: [1, 2, 3, 4], c: { 1: 60, 2: 60, 3: 30, 4: 10 }, day: 60, perDay: 1, kurzPerDay: 1, totalDays: 16, mehrling: true },
+  still:     { label: "Still- und Ernährungsschwierigkeiten (ab 13. Woche)", short: "Stillschwierigkeiten", form: "wb", col: "306XX", base: "306", zuschlag: true,
+               arts: [1, 2, 3, 4], c: { 1: 45, 2: 45, 3: 30, 4: 10 }, day: 45, perDay: 1, kurzPerDay: 1, totalDays: 8, mehrling: true },
+};
+// Materialpositionen, die auf der Versichertenbestätigung angekreuzt werden
+const MATERIAL = {
+  "60300": { label: "Entnahme Körpermaterial (Frau)", forms: ["ss", "wb"], oncePerForm: "wb" },
+  "60400": { label: "GDM-Screening", forms: ["ss"], once: true },
+  "60500": { label: "CTG", forms: ["ss"] },
+  "60700": { label: "Abklärung Blasensprung", forms: ["ss"], once: true },
+  "61100": { label: "Pulsoxymetrie", forms: ["wb"], once: true },
+  "61400": { label: "Neugeborenen-Screening", forms: ["wb"], once: true, onlyFrueh: true },
+  "61500": { label: "Entnahme Körpermaterial (Kind)", forms: ["wb"] },
+  "61600": { label: "Fäden ziehen Dammnaht", forms: ["wb"] },
+  "61700": { label: "Fäden/Klammern Sectionaht", forms: ["wb"] },
+};
+const RULES = { firstDaysExt: 120, extraPerChild: 10, earlyDays: 10, lateEndDays: 84, matLongDays: 4, kmBase: 25, kmMax: 50, aufklBeforeEtDays: 14 };
+const FORM_NAME = { ss: "Versichertenbestätigung Schwangerschaft", wb: "Versichertenbestätigung Wochenbett" };
+
+/* ===== Speicher ===== */
+const KEY = "hebammen-logbuch-v1";
+let S;
+function load() {
+  try { const r = localStorage.getItem(KEY); if (r) return migrate(JSON.parse(r)); } catch (e) {}
+  return demo();
+}
+function migrate(d) {  // Version 1 kannte nur „type“
+  const map = { vs: ["ss_hilfe", 1], wbf: ["wb_frueh", 1], wbft: ["wb_frueh", 3], wbs: ["wb_spaet", 1], still: ["still", 1] };
+  for (const e of d.entries) if (e.type && !e.leistung) { [e.leistung, e.art] = map[e.type] || ["ss_hilfe", 1]; delete e.type; e.mat = e.mat || []; }
+  return d;
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function uid() { return Math.random().toString(36).slice(2, 9); }
+
+/* ===== Datum ===== */
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => iso(new Date());
+const parseISO = s => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const addDays = (s, n) => { const d = parseISO(s); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const diffDays = (a, b) => Math.round((parseISO(a) - parseISO(b)) / 864e5);
+const de = s => { const [y, m, d] = s.split("-"); return `${d}.${m}.${y.slice(2)}`; };
+const weekday = s => ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][parseISO(s).getUTCDay()];
+const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const fromMin = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const unitsOf = e => Math.floor((toMin(e.end) - toMin(e.start)) / 5);
+
+function easter(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4,
+    f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${y}-${pad(mo)}-${pad(da)}`;
+}
+function holidays(y) {
+  const e = easter(y);
+  return new Set([`${y}-01-01`, addDays(e, -2), addDays(e, 1), `${y}-05-01`, addDays(e, 39), addDays(e, 50), `${y}-10-03`, `${y}-12-25`, `${y}-12-26`]);
+}
+// Zuschlagszeiten (§ 3): Mo–Fr 21–6 Uhr, Sa ab 12 Uhr, So/Feiertag ganztägig; 24.12./31.12. zuschlagsfrei
+function surchargeMin(date, s, e) {
+  const md = date.slice(5);
+  if (md === "12-24" || md === "12-31") return 0;
+  const wd = parseISO(date).getUTCDay();
+  if (wd === 0 || holidays(+date.slice(0, 4)).has(date)) return e - s;
+  const ov = (a, b) => Math.max(0, Math.min(e, b) - Math.max(s, a));
+  if (wd === 6) return ov(0, 360) + ov(720, 1440);
+  return ov(0, 360) + ov(1260, 1440);
+}
+
+/* ===== Prüfung ===== */
+const client = id => S.clients.find(c => c.id === id);
+const lebenstag = (date, c) => c && c.birth ? diffDays(date, c.birth) + 1 : null;
+const byTime = (a, b) => (a.date + a.start).localeCompare(b.date + b.start);
+const earlier = (o, e) => byTime(o, e) < 0 || (byTime(o, e) === 0 && o.id < e.id);
+const gpos = (L, art, z) => L.base.length === 4 ? L.base + art : L.base + (z ? 1 : 0) + art;
+
+function check(e) {
+  const out = [], c = client(e.clientId), L = LEISTUNGEN[e.leistung], art = +e.art || 1;
+  const s = toMin(e.start), en = toMin(e.end), dur = en - s;
+  const r = { issues: out, units: 0, billUnits: 0, surcharge: 0, auto: [], codes: [] };
+  if (!c) out.push(["err", "Keine Frau zugeordnet."]);
+  if (!L) { out.push(["err", "Keine Leistung gewählt."]); return r; }
+  if (!L.arts.includes(art)) out.push(["err", `„${ARTS[art]}“ gibt es bei ${L.short} nicht.`]);
+  if (!(dur > 0)) { out.push(["err", "Ende liegt nicht nach dem Beginn. Über Mitternacht bitte als zwei Einträge erfassen."]); return r; }
+  r.units = Math.floor(dur / 5);
+  if (dur % 5) out.push(["info", `${dur % 5} Min. zählen nicht (nur volle 5-Minuten-Einheiten).`]);
+  r.surcharge = L.zuschlag ? surchargeMin(e.date, s, en) : 0;
+
+  for (const o of S.entries) {
+    if (o.id === e.id || o.date !== e.date) continue;
+    if (toMin(o.start) < en && s < toMin(o.end)) {
+      const oc = client(o.clientId);
+      out.push(["err", `Überschneidet sich mit ${oc ? oc.name : "?"} ${o.start}–${o.end}.`]);
+    }
+  }
+
+  const mine = S.entries.filter(o => o.clientId === e.clientId && o.id !== e.id);
+  const sameL = mine.filter(o => o.leistung === e.leistung);
+  const sameDay = sameL.filter(o => o.date === e.date);
+  const kurz = art === 4;
+
+  if (c) {
+    const lt = lebenstag(e.date, c), kids = Math.max(1, +c.kids || 1);
+    const extra = L.mehrling && (art === 1 || art === 2) ? (kids - 1) * RULES.extraPerChild : 0;
+    // Zeitraum
+    if (L.form === "ss") {
+      if (c.birth && e.date >= c.birth) out.push(["err", "Datum liegt am oder nach der Geburt. Wochenbett wählen."]);
+      if (e.leistung === "ss_aufkl" && c.et && e.date >= addDays(c.et, -RULES.aufklBeforeEtDays)) out.push(["err", "Aufklärungsgespräch muss vor der 38. SSW stattfinden."]);
+    } else if (!c.birth) {
+      out.push(["err", "Geburtsdatum fehlt bei dieser Frau."]);
+    } else if (lt < 1) {
+      out.push(["err", "Datum liegt vor der Geburt."]);
+    } else if (e.leistung === "wb_frueh" && lt > RULES.earlyDays) {
+      out.push(["err", `${lt}. Lebenstag: frühes Wochenbett nur bis zum ${RULES.earlyDays}. Lebenstag. Spätes Wochenbett wählen.`]);
+    } else if (e.leistung === "wb_spaet" && lt <= RULES.earlyDays) {
+      out.push(["err", `${lt}. Lebenstag: das ist noch frühes Wochenbett.`]);
+    } else if (e.leistung === "wb_spaet" && diffDays(e.date, c.birth) > RULES.lateEndDays) {
+      out.push(["err", `Spätes Wochenbett endete mit der 12. Lebenswoche (${de(addDays(c.birth, RULES.lateEndDays))}). Für Stillprobleme „Stillschwierigkeiten“ wählen.`]);
+    } else if (e.leistung === "still" && diffDays(e.date, c.birth) <= RULES.lateEndDays) {
+      out.push(["err", "Stillschwierigkeiten (306XX) erst ab der 13. Lebenswoche. Davor über Wochenbett abrechnen."]);
+    }
+
+    // Kontingent: Minuten pro Kontakt, pro Tag (Arten 1–3 gemeinsam), Kurzberatung getrennt
+    let cCap = (L.c[art] || 0) + extra, dCap = kurz ? 10 : L.day + extra;
+    if (e.leistung === "wb_frueh" && art === 1) {
+      const firstVisit = mine.filter(o => o.leistung === "wb_frueh" && +o.art === 1).concat([e]).sort(byTime)[0];
+      if (lt <= 3 || firstVisit.date === e.date) {
+        cCap = dCap = RULES.firstDaysExt + extra;
+        out.push(["info", lt <= 3 ? `${lt}. Lebenstag: bis 120 Min. abrechenbar.` : "Tag des ersten Hausbesuchs: bis 120 Min. abrechenbar."]);
+      }
+    }
+    const dayBefore = sameDay.filter(o => earlier(o, e) && ((+o.art === 4) === kurz));
+    const usedDay = dayBefore.reduce((n, o) => n + unitsOf(o), 0);
+    const allow = Math.max(0, Math.min(Math.floor(cCap / 5), Math.floor(dCap / 5) - usedDay));
+    r.billUnits = Math.min(r.units, allow);
+    if (r.units > r.billUnits) out.push(["warn", `${r.units} Einheiten erbracht, abrechenbar ${r.billUnits} (Kontakt max. ${cCap} Min., Tag max. ${dCap} Min.). Auf der Bestätigung die echte Zeit eintragen.`]);
+
+    // Kontakte pro Tag
+    const nDay = dayBefore.length + 1;
+    if (kurz) {
+      if (L.kurzPerDay && nDay > L.kurzPerDay) out.push(["err", `Nur ${L.kurzPerDay} Kurzberatung pro Tag.`]);
+    } else {
+      if (nDay > L.perDay) out.push(["err", `Nur ${L.perDay} ${L.perDay === 1 ? "Kontakt" : "Kontakte"} pro Tag bei ${L.short}.`]);
+      if (L.videoOnlySecond && art === 3 && nDay === 1) out.push(["err", "Im frühen Wochenbett darf nur der zweite Kontakt am Tag per Video sein."]);
+      if (L.videoMaxDay && art === 3 && dayBefore.some(o => +o.art === 3)) out.push(["err", "Höchstens ein Videokontakt pro Tag."]);
+    }
+    // Kontingent insgesamt
+    const prev = sameL.filter(o => earlier(o, e));
+    if (kurz && L.kurzTotal && prev.filter(o => +o.art === 4).length >= L.kurzTotal) out.push(["err", `Höchstens ${L.kurzTotal} Kurzberatungen insgesamt.`]);
+    if (!kurz) {
+      const prevC = prev.filter(o => +o.art !== 4);
+      if (L.totalContacts && prevC.length >= L.totalContacts) out.push(["err", `Höchstens ${L.totalContacts} Kontakte insgesamt bei ${L.short}.`]);
+      if (L.totalDays) { const days = new Set(prevC.map(o => o.date)); if (!days.has(e.date) && days.size >= L.totalDays) out.push(["err", `Höchstens ${L.totalDays} Kontakttage bei ${L.short}. Mehr nur mit ärztlicher Anordnung.`]); }
+      if (L.totalMin) { const used = prevC.reduce((n, o) => n + unitsOf(o), 0); const left = Math.max(0, L.totalMin / 5 - used); if (r.billUnits > left) { r.billUnits = left; out.push(["warn", `Gesamtkontingent ${L.totalMin} Min. ausgeschöpft, abrechenbar ${left} Einheiten.`]); } }
+    }
+
+    // automatische Materialpauschalen
+    if (e.leistung === "ss_hilfe" && !kurz) r.auto.push(["60100", "Materialpauschale Schwangerschaft"]);
+    if (e.leistung === "ss_vorsorge") r.auto.push(["60200", "Materialpauschale Vorsorge"]);
+    if (e.leistung === "ss_still") r.auto.push(["60600", "Materialpauschale Stillvorbereitung"]);
+    if (L.form === "wb" && art === 1 && e.leistung !== "still" && c.birth) {
+      const first = S.entries.filter(o => o.clientId === e.clientId && +o.art === 1 && LEISTUNGEN[o.leistung].form === "wb" && o.leistung !== "still").concat(S.entries.some(o => o.id === e.id) ? [] : [e]).sort(byTime)[0];
+      if (first && first.id === e.id) r.auto.push(diffDays(e.date, c.birth) <= RULES.matLongDays ? ["61200", "Materialpauschale Wochenbett lang"] : ["61300", "Materialpauschale Wochenbett kurz"]);
+    }
+    // angekreuztes Material prüfen
+    for (const code of e.mat || []) {
+      const M = MATERIAL[code]; if (!M) continue;
+      if (!M.forms.includes(L.form)) out.push(["err", `${M.label} gehört nicht auf die ${FORM_NAME[L.form]}.`]);
+      if (M.onlyFrueh && e.leistung !== "wb_frueh") out.push(["warn", `${M.label} ist nur im frühen Wochenbett vorgesehen.`]);
+      if (code === "60500" && e.leistung !== "ss_hilfe" && e.leistung !== "ss_vorsorge") out.push(["err", "CTG nur bei Hilfeleistung oder Vorsorge."]);
+      const once = M.once || (M.oncePerForm === L.form);
+      if (once && mine.some(o => (o.mat || []).includes(code) && LEISTUNGEN[o.leistung].form === L.form && earlier(o, e))) out.push(["err", `${M.label} ist nur einmal abrechenbar und wurde schon erfasst.`]);
+    }
+  }
+
+  // Positionsnummern
+  if (L.arts.includes(art)) {
+    const z = Math.min(r.surcharge, r.billUnits * 5);
+    if (L.zuschlag && z > 0 && z < r.billUnits * 5) r.codes = [gpos(L, art, 0), gpos(L, art, 1)];
+    else r.codes = [gpos(L, art, L.zuschlag && z > 0)];
+  }
+
+  // Wegegeld
+  // Wegegeld: AZH fragt „Anzahl Versicherte auf Route / Gesamtstrecke in km“; Grenze 25 km (Ausnahme 50 km) gilt je einfache Strecke zur Frau
+  const km = +e.km || 0, route = Math.max(1, +e.route || 1), perWoman = km / route;
+  if (km && art !== 1) out.push(["warn", "Wegegeld gibt es nur bei aufsuchender Hilfeleistung."]);
+  if (km && art === 1) out.push(["info", route > 1 ? `Anteiliges Wegegeld 50200: ${(Math.round(perWoman * 10) / 10).toString().replace(".", ",")} km für diese Frau.` : "Wegegeld 50100."]);
+  if (perWoman > 2 * RULES.kmMax) out.push(["err", `${km} km Gesamtstrecke: mehr als ${RULES.kmMax} km einfach zur Frau ist nicht abrechenbar.`]);
+  else if (perWoman > 2 * RULES.kmBase && !e.kmReason) out.push(["warn", `Ist die Frau mehr als ${RULES.kmBase} km entfernt? Dann nur mit Grund: geplante Hausgeburt, Vertretung (Name angeben) oder keine Hebamme im Umkreis.`]);
+  if (r.surcharge > 0) out.push(["info", `${r.surcharge} Min. in Zuschlagszeit.`]);
+  return r;
+}
+
+/* ===== Sprachnotiz auswerten ===== */
+// Gesprochene Zeit- und Zahlwörter in Ziffern übersetzen: „halb zehn“ → 9:30, „zehn nach drei“ → 3:10
+const NUM = { ein: 1, eins: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10, elf: 11, zwölf: 12,
+  dreizehn: 13, vierzehn: 14, fünfzehn: 15, sechzehn: 16, siebzehn: 17, achtzehn: 18, neunzehn: 19, zwanzig: 20, dreißig: 30, vierzig: 40, fünfzig: 50 };
+function normalizeSpoken(s) {
+  let t = " " + s.toLowerCase().replace(/[,;!?]/g, " ").replace(/\.(?!\d)/g, " ").replace(/\s+/g, " ") + " ";
+  t = t.replace(/ (eine|einer) (stunde) /g, " 60 minuten ").replace(/ (eine )?halbe stunde /g, " 30 minuten ").replace(/ (eine )?dreiviertel ?stunde /g, " 45 minuten ")
+    .replace(/ (anderthalb|eineinhalb) stunden /g, " 90 minuten ").replace(/ (zwei) stunden /g, " 120 minuten ");
+  t = t.replace(/ (ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun)und(zwanzig|dreißig|vierzig|fünfzig) /g, (m, a, b) => ` ${NUM[a] + NUM[b]} `);
+  t = t.replace(/ (eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf|dreizehn|vierzehn|fünfzehn|sechzehn|siebzehn|achtzehn|neunzehn|zwanzig|dreißig|vierzig|fünfzig)(?= )/g, (m, w) => ` ${NUM[w]}`);
+  const hh = h => ((+h + 23) % 24);
+  t = t.replace(/ halb (\d{1,2})(?![\d:])/g, (m, h) => ` ${hh(h)}:30`)
+    .replace(/ viertel nach (\d{1,2})(?![\d:])/g, " $1:15")
+    .replace(/ (viertel vor|dreiviertel) (\d{1,2})(?![\d:])/g, (m, w, h) => ` ${hh(h)}:45`)
+    .replace(/ kurz nach (\d{1,2})(?![\d:])/g, " $1:05")
+    .replace(/ kurz vor (\d{1,2})(?![\d:])/g, (m, h) => ` ${hh(h)}:55`)
+    .replace(/ (5|10|20|25) nach (\d{1,2})(?![\d:])/g, (m, mi, h) => ` ${h}:${pad(mi)}`)
+    .replace(/ (5|10|20|25) vor (\d{1,2})(?![\d:])/g, (m, mi, h) => ` ${hh(h)}:${60 - mi}`)
+    .replace(/ (\d{1,2}) uhr (\d{1,2})(?![\d:])(?! ?(km|kilometer|min))/g, " $1:$2");
+  // abends/nachmittags: kleine Stunden auf 12–23 schieben
+  if (/abends|nachmittags|am nachmittag|am abend|nachts? um/.test(t))
+    t = t.replace(/ (\d{1,2}):(\d{2})/g, (m, h, mi) => ` ${+h < 12 && +h >= 1 ? +h + 12 : h}:${mi}`).replace(/ (\d{1,2}) uhr/g, (m, h) => ` ${+h < 12 && +h >= 1 ? +h + 12 : h} uhr`);
+  return t;
+}
+
+function parseNote(txt) {
+  const t = normalizeSpoken(txt);
+  const res = { date: today(), start: "", end: "", km: "", leistung: "", art: 1, clientId: "", mat: [], note: txt.trim() };
+  if (/vorgestern/.test(t)) res.date = addDays(today(), -2);
+  else if (/gestern/.test(t)) res.date = addDays(today(), -1);
+  let dm = (" " + txt.toLowerCase() + " ").match(/\b(\d{1,2})\.(\d{1,2})\.(\d{2,4})?/);
+  if (dm && (+dm[2] > 12 || +dm[2] < 1 || +dm[1] > 31)) dm = null;
+  if (dm) { const y = dm[3] ? (dm[3].length === 2 ? "20" + dm[3] : dm[3]) : today().slice(0, 4); res.date = `${y}-${pad(dm[2])}-${pad(dm[1])}`; }
+
+  const km = t.match(/(\d+(?:[.,]\d+)?)\s*(?:km|kilometer)/);
+  if (km) res.km = km[1].replace(",", ".");
+  const words = { zwei: 2, drei: 3, vier: 4, fünf: 5 };
+  const rt = t.match(/(\d|zwei|drei|vier|fünf) (?:frauen|versicherte|besuche)/);
+  if (rt) res.route = words[rt[1]] || +rt[1];
+  let rest = km ? t.replace(km[0], " ") : t;
+  if (dm) rest = rest.replace(new RegExp(`\\b${dm[1]}\\.${dm[2]}(\\.${dm[3] || ""})?`), " ");
+  const times = [], re = /(\d{1,2})\s*(?::|\.|uhr)\s*(\d{2})?(?!\d)/g;
+  let m;
+  const span = rest.match(/(?<!uhr ?)\b(\d{1,2})(?:[:.](\d{2}))?\s*(?:uhr\s*)?bis\s*(\d{1,2})(?:[:.](\d{2})|\s*uhr\s*(\d{2})?)?(?!\d)/);
+  if (span && +span[1] < 24 && +span[3] < 24) times.push(`${pad(span[1])}:${pad(span[2] || 0)}`, `${pad(span[3])}:${pad(span[4] || span[5] || 0)}`);
+  while (times.length < 2 && (m = re.exec(rest))) {
+    const h = +m[1], mi = m[2] ? +m[2] : 0;
+    if (h < 24 && mi < 60) times.push(`${pad(h)}:${pad(mi)}`);
+  }
+  if (times.length < 2) { const vb = rest.match(/von (\d{1,2}) bis (\d{1,2})\b/); if (vb) { times[0] = `${pad(vb[1])}:00`; times[1] = `${pad(vb[2])}:00`; } }
+  res.start = times[0] || ""; res.end = times[1] || "";
+  const dur = t.match(/(\d{1,3})\s*(?:min|minuten)/);
+  if (res.start && !res.end && dur) res.end = fromMin(toMin(res.start) + +dur[1]);
+
+  for (const c of S.clients) {
+    const parts = c.name.toLowerCase().split(/\s+/).map(p => p.replace(/\.$/, "")).filter(p => p.length > 2);
+    if (parts.some(p => new RegExp(`[\\s,]${p}[\\s,.]`).test(t))) { res.clientId = c.id; break; }
+  }
+  if (/kurzberatung|telefon|anruf|telefonisch/.test(t)) res.art = 4;
+  else if (/video/.test(t)) res.art = 3;
+  else if (/praxis|sprechstunde|bei mir|nicht aufsuchend|nicht-aufsuchend/.test(t)) res.art = 2;
+
+  const c = client(res.clientId), since = c && c.birth ? diffDays(res.date, c.birth) : null;
+  if (/vorsorge/.test(t)) res.leistung = "ss_vorsorge";
+  else if (/aufklärung|geburtsort/.test(t)) res.leistung = "ss_aufkl";
+  else if (/stillvorbereitung/.test(t)) res.leistung = "ss_still";
+  else if (/schwanger|ctg|blasensprung|gdm|zuckertest/.test(t) || (c && !c.birth)) res.leistung = "ss_hilfe";
+  else if (/wochenbett|nachsorge|hausbesuch|besuch|wb\b|still/.test(t) || (c && c.birth)) {
+    if (since == null || since < RULES.earlyDays) res.leistung = "wb_frueh";
+    else if (since <= RULES.lateEndDays) res.leistung = "wb_spaet";
+    else res.leistung = "still";
+  }
+  if (!res.leistung && c && !c.birth) res.leistung = "ss_hilfe";
+  const L = LEISTUNGEN[res.leistung];
+  const matKeys = [[/ctg/, "60500"], [/gdm|zuckertest/, "60400"], [/blasensprung/, "60700"], [/pulsoxy/, "61100"], [/screening/, "61400"],
+    [/blut (?:beim|vom) kind|fersenblut|kind blut/, "61500"], [/blut|abstrich|urin|körpermaterial/, "60300"], [/fäden.*damm|dammnaht/, "61600"], [/section|kaiserschnitt|klammer/, "61700"]];
+  for (const [rx, code] of matKeys) if (rx.test(t) && (!L || MATERIAL[code].forms.includes(L.form)) && !res.mat.includes(code)) { if (code === "60300" && res.mat.includes("61500")) continue; res.mat.push(code); }
+  return res;
+}
+
+/* ===== Beispieldaten ===== */
+function demo() {
+  const d = today(), c1 = uid(), c2 = uid(), c3 = uid();
+  const e = (clientId, off, leistung, art, start, end, km, note, mat = []) => ({ id: uid(), clientId, date: addDays(d, off), leistung, art, start, end, km, note, mat, done: false });
+  return {
+    demo: true,
+    clients: [
+      { id: c1, name: "Lena K.", kasse: "TK", birth: addDays(d, -5), et: addDays(d, -7), kids: 1 },
+      { id: c2, name: "Sara M.", kasse: "AOK", birth: addDays(d, -20), et: addDays(d, -18), kids: 2 },
+      { id: c3, name: "Jana P.", kasse: "Barmer", birth: "", et: addDays(d, 40), kids: 1 },
+    ],
+    entries: [
+      e(c1, -3, "wb_frueh", 1, "09:10", "11:05", 8, "Erster Besuch, Nabel, Gewicht", ["61400"]),
+      e(c1, -2, "wb_frueh", 1, "10:00", "10:50", 8, ""),
+      e(c1, 0, "wb_frueh", 1, "09:30", "10:20", 8, "Stillen, Brust gerötet"),
+      { ...e(c2, 0, "wb_spaet", 1, "10:10", "11:00", 28, "Überschneidung zum Ausprobieren, Route mit Lena"), route: 2 },
+      e(c2, -4, "wb_spaet", 4, "18:00", "18:10", 0, "Telefon, Frage zum Stillen"),
+      e(c2, -1, "wb_spaet", 1, "20:30", "21:40", 14, "Abends, teils Zuschlagszeit"),
+      e(c3, -1, "ss_vorsorge", 1, "14:00", "14:35", 31, "Vorsorge, Blutdruck, Urin", ["60300"]),
+      e(c3, -1, "ss_hilfe", 2, "16:00", "16:45", 0, "Beschwerden, CTG", ["60500"]),
+    ],
+  };
+}
+
+/* ===== Ansichten ===== */
+const $app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+let view = "erfassen", draft = null, editId = null, editClient = null;
+let range = { from: addDays(today(), -14), to: today(), open: true };
+
+function setView(v) { view = v; render(); window.scrollTo(0, 0); }
+document.getElementById("tabs").addEventListener("click", ev => { const b = ev.target.closest("button"); if (b) setView(b.dataset.v); });
+
+const issuesHtml = list => list.map(([lvl, msg]) => `<div class="issue ${lvl}">${esc(msg)}</div>`).join("");
+const clientOptions = sel => `<option value="">– Frau wählen –</option>` + S.clients.map(c => `<option value="${c.id}" ${c.id === sel ? "selected" : ""}>${esc(c.name)}</option>`).join("");
+function leistungOptions(sel) {
+  const g = (f, name) => `<optgroup label="${name}">` + Object.entries(LEISTUNGEN).filter(([, L]) => L.form === f).map(([k, L]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${L.label}</option>`).join("") + `</optgroup>`;
+  return `<option value="">– Leistung wählen –</option>` + g("ss", "Schwangerschaft") + g("wb", "Wochenbett und Stillzeit");
+}
+const errorCount = () => S.entries.filter(e => !e.done && check(e).issues.some(i => i[0] === "err")).length;
+const header = (title, sub) => `${S.demo ? `<div class="banner"><span>Beispieldaten zum Ausprobieren.</span><button class="small" data-act="clear-demo">Beispiele löschen</button></div>` : ""}
+  <div class="top"><h1>${title}</h1><small>${sub || ""}</small></div>`;
+
+function render() {
+  for (const b of document.querySelectorAll("#tabs button")) {
+    b.setAttribute("aria-current", b.dataset.v === view ? "page" : "false");
+    if (b.dataset.v === "tage") { const n = errorCount(); b.innerHTML = `Einträge${n ? `<span class="count">${n}</span>` : ""}`; }
+  }
+  $app.innerHTML = ({ erfassen: vErfassen, tage: vTage, frauen: vFrauen, buero: vBuero })[view]();
+}
+
+function vErfassen() {
+  const d = draft;
+  let form = "";
+  if (d) {
+    const L = LEISTUNGEN[d.leistung];
+    const tmp = { ...d, id: editId || "__draft" };
+    const ok = d.clientId && d.leistung && d.start && d.end;
+    const chk = ok ? check(tmp) : null;
+    const mats = L ? Object.entries(MATERIAL).filter(([, M]) => M.forms.includes(L.form)) : [];
+    form = `<div class="card">
+      <h2>${editId ? "Eintrag bearbeiten" : "Prüfen und speichern"}</h2>
+      <div class="grid2">
+        <label class="f">Frau<select id="d-client">${clientOptions(d.clientId)}</select></label>
+        <label class="f">Datum<input id="d-date" type="date" value="${d.date}"></label>
+      </div>
+      <label class="f">Leistung<select id="d-leistung">${leistungOptions(d.leistung)}</select></label>
+      ${L ? `<div class="seg" role="group" aria-label="Art der Leistungserbringung">${L.arts.map(a => `<button type="button" data-act="set-art" data-art="${a}" aria-pressed="${+d.art === a}">${a} · ${ARTS[a]}</button>`).join("")}</div>` : ""}
+      <div class="grid2">
+        <label class="f">Beginn<input id="d-start" type="time" value="${d.start}"></label>
+        <label class="f">Ende<input id="d-end" type="time" value="${d.end}"></label>
+        <label class="f">Gesamtstrecke km<input id="d-km" type="number" inputmode="decimal" min="0" value="${esc(d.km)}"></label>
+        <label class="f">Frauen auf der Route<input id="d-route" type="number" inputmode="numeric" min="1" max="9" value="${esc(d.route || 1)}"></label>
+      </div>
+      ${+d.km / Math.max(1, +d.route || 1) > 2 * RULES.kmBase ? `<label class="f">Grund für über ${RULES.kmBase} km<input id="d-kmReason" value="${esc(d.kmReason)}" placeholder="Vertretung von …"></label>` : ""}
+      ${mats.length ? `<div class="label">Material ankreuzen</div><div class="checks">${mats.map(([code, M]) => `<label><input type="checkbox" class="d-mat" value="${code}" ${(d.mat || []).includes(code) ? "checked" : ""}>${M.label}</label>`).join("")}</div>` : ""}
+      <label class="f">Notiz<textarea id="d-note" rows="2">${esc(d.note)}</textarea></label>
+      ${chk ? `<div class="row"><span class="pill acc num">${chk.codes.join(" + ") || "?"}</span><span class="pill acc num">${chk.units} Einh. erbracht</span><span class="pill ${chk.billUnits < chk.units ? "warn" : "ok"} num">${chk.billUnits} abrechenbar</span>${chk.auto.map(a => `<span class="pill acc">${a[0]} ${a[1]}</span>`).join("")}</div>${issuesHtml(chk.issues)}`
+             : `<div class="issue warn">Noch offen: ${[!d.clientId && "Frau", !d.leistung && "Leistung", !d.start && "Beginn", !d.end && "Ende"].filter(Boolean).join(", ")}</div>`}
+      <div class="row"><button class="primary" data-act="save-draft" ${ok ? "" : "disabled"}>Speichern</button><button class="ghost" data-act="cancel-draft">Verwerfen</button>${editId ? `<button class="ghost" data-act="del-entry" data-id="${editId}">Löschen</button>` : ""}</div>
+    </div>`;
+  }
+  return header("Termin erfassen", weekday(today()) + " " + de(today())) + `
+  <div class="card" id="ki-box">${kiBox()}</div>
+  <div class="card">
+    <label class="f" for="note-in">Sprachnotiz oder Text</label>
+    <textarea id="note-in" rows="3" placeholder="Lena, Wochenbett, 9:30 bis 10:20, 8 km, Stillen gut">${esc(lastText)}</textarea>
+    <div class="hint">Mikrofon-Taste der Handy-Tastatur antippen und sprechen: Name, Leistung, von bis, Kilometer, Notiz. „Telefon“, „Video“ oder „in der Praxis“ setzt die Art, „CTG“ oder „Blut abgenommen“ das Material.</div>
+    <div class="row"><button class="primary" data-act="parse">Auswerten</button><button class="ghost" data-act="manual">Ohne Text ausfüllen</button></div>
+  </div>
+  ${form}`;
+}
+
+function entryCard(e) {
+  const c = client(e.clientId), r = check(e), L = LEISTUNGEN[e.leistung];
+  const lvl = r.issues.some(i => i[0] === "err") ? "has-err" : r.issues.some(i => i[0] === "warn") ? "has-warn" : "clean";
+  return `<div class="entry ${lvl}">
+    <div class="entry-head"><strong>${esc(c ? c.name : "?")}</strong><span class="num">${e.start}–${e.end}</span></div>
+    <div class="row muted" style="font-size:.9rem"><span>${L.short}, ${ARTS[e.art]}</span><span class="num">${r.codes.join("+")}</span><span class="num">${r.billUnits}/${r.units} Einh.</span>${e.km ? `<span class="num">${e.km} km</span>` : ""}${e.done ? `<span class="pill ok">abgeschrieben</span>` : ""}</div>
+    ${e.note ? `<div style="font-size:.9rem">${esc(e.note)}</div>` : ""}
+    ${issuesHtml(r.issues.filter(i => i[0] !== "info"))}
+    <div><button class="small ghost" data-act="edit-entry" data-id="${e.id}">Bearbeiten</button></div>
+  </div>`;
+}
+
+function vTage() {
+  const sorted = [...S.entries].sort((a, b) => byTime(b, a));
+  const days = [...new Set(sorted.map(e => e.date))];
+  const n = errorCount();
+  return header("Einträge", `${S.entries.length} Termine`) +
+    (n ? `<div class="issue err">${n} offene ${n === 1 ? "Eintrag hat" : "Einträge haben"} einen Fehler. Am besten jetzt korrigieren, solange du dich noch erinnerst.</div>` : `<div class="issue info">Keine Fehler in offenen Einträgen.</div>`) +
+    (days.length ? days.map(d => `<div class="card"><h3>${weekday(d)} ${de(d)}</h3>${sorted.filter(e => e.date === d).sort(byTime).map(entryCard).join("")}</div>`).join("")
+      : `<div class="card"><p class="muted">Noch keine Termine. Unter „Erfassen“ den ersten eintragen.</p></div>`);
+}
+
+function phaseOf(c) {
+  if (!c.birth) return c.et ? `Schwanger, ET ${de(c.et)}` : "Schwanger";
+  const lt = lebenstag(today(), c), since = lt - 1;
+  if (lt <= RULES.earlyDays) return `Frühes Wochenbett, ${lt}. Lebenstag`;
+  if (since <= RULES.lateEndDays) return `Spätes Wochenbett, ${lt}. Lebenstag`;
+  return "Stillzeit (ab 13. Woche)";
+}
+function meters(c) {
+  const es = S.entries.filter(e => e.clientId === c.id && +e.art !== 4);
+  const cnt = k => es.filter(e => e.leistung === k).length, days = k => new Set(es.filter(e => e.leistung === k).map(e => e.date)).size;
+  const parts = [];
+  if (cnt("wb_frueh")) parts.push(`Frühes WB ${cnt("wb_frueh")}/20 Kontakte`);
+  if (cnt("wb_spaet")) parts.push(`Spätes WB ${days("wb_spaet")}/16 Tage`);
+  if (cnt("still")) parts.push(`Stillschw. ${days("still")}/8 Tage`);
+  if (cnt("ss_aufkl")) parts.push(`Aufklärung ${cnt("ss_aufkl")}/2`);
+  const k = S.entries.filter(e => e.clientId === c.id && e.leistung === "ss_hilfe" && +e.art === 4).length;
+  if (k) parts.push(`Kurzberatung SS ${k}/12`);
+  return parts.length ? `<div class="meter num muted">${parts.map(p => `<span>${p}</span>`).join("")}</div>` : "";
+}
+
+function vFrauen() {
+  const ec = editClient;
+  return header("Frauen", `${S.clients.length} betreut`) + `
+  <div class="card">
+    <h2>${ec && ec.id ? "Frau bearbeiten" : "Neue Frau"}</h2>
+    <div class="grid2">
+      <label class="f">Name oder Kürzel<input id="c-name" value="${esc(ec?.name)}" placeholder="Vorname + Initial"></label>
+      <label class="f">Krankenkasse<input id="c-kasse" value="${esc(ec?.kasse)}"></label>
+      <label class="f">Versicherung<select id="c-vers">${["GKV", "PKV", "Selbstzahler"].map(v => `<option ${(ec?.vers || "GKV") === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label class="f">Errechneter Termin<input id="c-et" type="date" value="${ec?.et || ""}"></label>
+      <label class="f">Geburtsdatum Kind<input id="c-birth" type="date" value="${ec?.birth || ""}"></label>
+      <label class="f">Kinder dieser Geburt<input id="c-kids" type="number" min="1" max="4" value="${ec?.kids || 1}"></label>
+    </div>
+    <div class="hint">Der Vorname reicht. Vollständiger Name, Versichertennummer und Kassen-IK stehen erst auf dem Bogen.</div>
+    <div class="row"><button class="primary" data-act="save-client">Speichern</button>${ec && ec.id ? `<button class="ghost" data-act="cancel-client">Abbrechen</button><button class="ghost" data-act="del-client" data-id="${ec.id}">Löschen</button>` : ""}</div>
+  </div>
+  ${S.clients.map(c => {
+    const n = S.entries.filter(e => e.clientId === c.id).length;
+    return `<div class="card"><div class="entry-head"><h3>${esc(c.name)}</h3><span class="muted">${esc(c.kasse)}</span></div>
+      <div class="row"><span class="pill acc">${phaseOf(c)}</span><span class="muted num">${n} Termine</span>${+c.kids > 1 ? `<span class="pill acc">${c.kids} Kinder</span>` : ""}</div>
+      ${meters(c)}
+      <div><button class="small ghost" data-act="edit-client" data-id="${c.id}">Bearbeiten</button></div></div>`;
+  }).join("")}
+  <div class="card"><h2>Daten sichern</h2>
+    <div class="hint">Die Daten liegen nur auf diesem Handy. Einmal pro Woche eine Sicherung herunterladen und zum Beispiel in die Cloud oder per Kabel auf den PC legen.</div>
+    <div class="row"><button data-act="download">Sicherung herunterladen</button><label class="f" style="flex:1">Sicherung laden<input id="import-file" type="file" accept="application/json,.json"></label></div>
+    <div class="row"><button class="ghost small" data-act="export">Als Text kopieren</button><button class="ghost small" data-act="show-import">Text einfügen</button></div>
+    <textarea id="io" rows="4" hidden></textarea>
+    <div class="row" id="io-actions" hidden><button class="primary" data-act="do-import">Einfügen und ersetzen</button></div>
+  </div>`;
+}
+
+// Spalten wie auf Formular 3.2 / 3.3 (gültig ab 01.04.2026) und der AZH-Seitenleiste
+const FORM_COLS = {
+  ss: { lei: [["101XX", ["ss_hilfe"]], ["1020X", ["ss_vorsorge"]], ["1030X", ["ss_aufkl"]], ["1040X", ["ss_still"]], ["105/106XX", []]],
+        mat: ["60300", "60400", "60500", "60700"], kurz: "10104" },
+  wb: { lei: [["301/303XX", ["wb_frueh", "wb_spaet"]], ["304/305XX", []], ["306XX", ["still"]]],
+        mat: ["60300", "61100", "61400", "61500", "61600", "61700"], kurz: "30x04", strip: true },
+};
+const ROWS_PER_SHEET = 15;
+const tick = id => `<input type="checkbox" aria-label="abgeschrieben" data-act="toggle-done" data-id="${id}">`;
+function formTable(c, f, rows) {
+  const F = FORM_COLS[f], main = rows.filter(e => +e.art !== 4), kurz = rows.filter(e => +e.art === 4);
+  const sheets = [];
+  for (let i = 0; i < main.length; i += ROWS_PER_SHEET) sheets.push(main.slice(i, i + ROWS_PER_SHEET));
+  const sum = rows.reduce((a, e) => { a.u += check(e).billUnits; a.km += +e.km || 0; return a; }, { u: 0, km: 0 });
+  const sheet = (list, n) => `
+    ${sheets.length > 1 ? `<div class="label">Bogen ${n} von ${sheets.length}</div>` : ""}
+    <div class="tbl-wrap"><table class="bogen">
+      <thead><tr><th>✓</th><th>Z.</th><th>Datum</th><th>von</th><th>bis</th>${F.lei.map(([h]) => `<th class="c">${h}</th>`).join("")}${F.mat.map(code => `<th class="c">${code}</th>`).join("")}${F.strip ? `<th class="c side">61200 61300</th><th class="c">1. aufs.</th>` : ""}<th class="c ${F.strip ? "" : "side"}">Vers. / km</th><th>Prüfung</th></tr></thead>
+      <tbody>${list.map((e, i) => {
+        const r = check(e), L = LEISTUNGEN[e.leistung], bad = r.issues.some(x => x[0] === "err");
+        const mp = r.auto.find(a => a[0] === "61200" || a[0] === "61300");
+        const route = Math.max(1, +e.route || 1);
+        const notes = [r.codes.join(" + ") + ` · ${r.billUnits} Einh.`, r.surcharge ? `${r.surcharge} Min. Zuschlag` : "", e.kmReason].filter(Boolean);
+        return `<tr class="${e.done ? "done" : ""} ${(i + 1) % 5 === 0 && i + 1 < ROWS_PER_SHEET ? "dash" : ""}">
+          <td>${tick(e.id).replace(">", e.done ? " checked>" : ">")}</td><td class="num muted">${i + 1}</td>
+          <td class="num">${de(e.date)}</td><td class="num">${e.start}</td><td class="num">${e.end}</td>
+          ${F.lei.map(([, keys]) => `<td class="code c">${keys.includes(e.leistung) ? e.art : ""}</td>`).join("")}
+          ${F.mat.map(code => `<td class="code c">${(e.mat || []).includes(code) ? "X" : ""}</td>`).join("")}
+          ${F.strip ? `<td class="code c side">${mp ? "X" : ""}</td><td class="code c">${mp ? "X" : ""}</td>` : ""}
+          <td class="code c ${F.strip ? "" : "side"}">${e.km && +e.art === 1 ? `${route} / ${e.km}` : ""}</td>
+          <td class="num" style="font-size:.78rem">${notes.map(esc).join("<br>")}${bad ? ` <span class="pill err">Fehler</span>` : ""}</td></tr>`;
+      }).join("")}</tbody>
+    </table></div>`;
+  return `<div class="card">
+    <div class="entry-head"><h2>${esc(c.name)}</h2><span class="label">${FORM_NAME[f]}</span></div>
+    <div class="form-head">
+      <div><span>Versicherung</span>${esc(c.vers || "GKV")}</div>
+      <div><span>Krankenkasse</span>${esc(c.kasse) || "–"}</div>
+      <div><span>Errechneter Termin</span>${c.et ? de(c.et) : "–"}</div>
+      <div><span>Geburtsdatum Kind</span>${c.birth ? de(c.birth) : "–"}</div>
+      ${f === "wb" && +c.kids > 1 ? `<div><span>Mehrlinge, Kinder gesamt</span>${c.kids}</div>` : ""}
+    </div>
+    ${sheets.map((l, i) => sheet(l, i + 1)).join("")}
+    ${kurz.length ? `<div class="label">Seitenleiste: Kurzberatung (${F.kurz})</div>
+    <div class="tbl-wrap"><table class="bogen"><thead><tr><th>✓</th><th>Datum</th><th>von</th><th>bis</th><th>Prüfung</th></tr></thead><tbody>
+      ${kurz.map(e => { const r = check(e); return `<tr class="${e.done ? "done" : ""}"><td>${tick(e.id).replace(">", e.done ? " checked>" : ">")}</td><td class="num">${de(e.date)}</td><td class="num">${e.start}</td><td class="num">${e.end}</td><td class="num" style="font-size:.78rem">${r.codes.join("")} · ${r.billUnits} Einh.</td></tr>`; }).join("")}
+    </tbody></table></div>` : ""}
+    <div class="row muted num" style="font-size:.9rem"><span>${rows.length} Zeilen</span><span>${sum.u} Einheiten</span><span>${sum.km} km</span></div>
+  </div>`;
+}
+
+function vBuero() {
+  const list = S.entries.filter(e => e.date >= range.from && e.date <= range.to && (!range.open || !e.done));
+  const blocks = [];
+  for (const c of S.clients) for (const f of ["ss", "wb"]) {
+    const rows = list.filter(e => e.clientId === c.id && LEISTUNGEN[e.leistung].form === f).sort(byTime);
+    if (rows.length) blocks.push(formTable(c, f, rows));
+  }
+  const errs = list.filter(e => check(e).issues.some(i => i[0] === "err")).length;
+  return header("Bürotag", "Zeile für Zeile auf den Bogen") + `
+  <div class="card"><div class="grid2">
+    <label class="f">Von<input id="r-from" type="date" value="${range.from}"></label>
+    <label class="f">Bis<input id="r-to" type="date" value="${range.to}"></label>
+    <label class="f">Anzeigen<select id="r-open"><option value="1" ${range.open ? "selected" : ""}>Nur offene</option><option value="0" ${range.open ? "" : "selected"}>Alle</option></select></label>
+  </div>
+  <div class="hint">Spalten und Zeilen wie auf dem Bogen: in der Leistungsspalte die Art (1 aufsuchend, 2 nicht-aufsuchend, 3 Video), X heißt ankreuzen. Rechts der Doppellinie steht die ausklappbare AZH-Seitenleiste in derselben Zeile. Gestrichelte Linien wie auf dem Bogen nach Zeile 5 und 10, ab Zeile 16 ein neuer Bogen.</div></div>
+  ${errs ? `<div class="issue err">${errs} ${errs === 1 ? "Eintrag" : "Einträge"} mit Fehler im Zeitraum. Erst unter „Einträge“ korrigieren, dann abschreiben.</div>` : ""}
+  ${blocks.join("") || `<div class="card"><p class="muted">Im Zeitraum ist nichts offen.</p></div>`}`;
+}
+
+/* ===== Aktionen ===== */
+function readDraft() {
+  const g = id => document.getElementById(id);
+  if (!g("d-client")) return;
+  const L = LEISTUNGEN[g("d-leistung").value];
+  draft = { ...draft, clientId: g("d-client").value, leistung: g("d-leistung").value, date: g("d-date").value, km: g("d-km").value,
+    route: +g("d-route").value || 1, start: g("d-start").value, end: g("d-end").value, note: g("d-note").value, kmReason: g("d-kmReason") ? g("d-kmReason").value : (draft.kmReason || ""),
+    mat: [...document.querySelectorAll(".d-mat:checked")].map(x => x.value).filter(code => !L || MATERIAL[code].forms.includes(L.form)) };
+  if (L && !L.arts.includes(+draft.art)) draft.art = L.arts[0];
+}
+$app.addEventListener("change", ev => {
+  const id = ev.target.id || "";
+  if (id.startsWith("d-") || ev.target.classList.contains("d-mat")) { readDraft(); render(); }
+  if (id.startsWith("r-")) {
+    range = { from: document.getElementById("r-from").value, to: document.getElementById("r-to").value, open: document.getElementById("r-open").value === "1" };
+    render();
+  }
+  if (id === "ki-llm") document.getElementById("ki-model-wrap").hidden = !ev.target.checked;
+  if (id === "import-file" && ev.target.files[0]) {
+    ev.target.files[0].text().then(txt => {
+      try { const d = JSON.parse(txt); if (!Array.isArray(d.clients) || !Array.isArray(d.entries)) throw 0; S = migrate(d); save(); render(); }
+      catch (e) { ev.target.value = ""; ev.target.insertAdjacentHTML("afterend", `<div class="issue err">Die Datei ist keine gültige Sicherung.</div>`); }
+    });
+  }
+  if (ev.target.dataset.act === "toggle-done") {
+    const e = S.entries.find(x => x.id === ev.target.dataset.id); e.done = ev.target.checked; save(); render();
+  }
+});
+$app.addEventListener("click", ev => {
+  const b = ev.target.closest("button[data-act]"); if (!b) return;
+  const act = b.dataset.act, id = b.dataset.id;
+  if (act === "parse") {
+    const txt = document.getElementById("note-in").value.trim(); if (!txt) return;
+    lastText = txt;
+    if (ki.llm) { analyse(txt, null); return; }
+    draft = parseNote(txt); editId = null; render();
+  }
+  else if (act === "ki-start") {
+    const sel = document.getElementById("ki-model"), cb = document.getElementById("ki-llm");
+    if (sel) kiCfg.model = sel.value;
+    if (cb) kiCfg.llm = cb.checked;
+    kiSave(); kiStart();
+  }
+  else if (act === "mic") { recToggle(); }
+  else if (act === "download") {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: "application/json" }));
+    a.download = `hebammen-logbuch-${today()}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } else if (act === "manual") { draft = { date: today(), start: "", end: "", km: "", leistung: "", art: 1, clientId: "", mat: [], note: "" }; editId = null; render(); }
+  else if (act === "set-art") { readDraft(); draft.art = +b.dataset.art; render(); }
+  else if (act === "cancel-draft") { draft = null; editId = null; render(); }
+  else if (act === "save-draft") {
+    readDraft();
+    if (editId) Object.assign(S.entries.find(x => x.id === editId), draft);
+    else S.entries.push({ ...draft, id: uid(), done: false });
+    save(); draft = null; editId = null; setView("tage");
+  } else if (act === "edit-entry") { const e = S.entries.find(x => x.id === id); draft = { ...e, mat: [...(e.mat || [])] }; editId = id; setView("erfassen"); }
+  else if (act === "del-entry") {
+    if (b.dataset.confirm) { S.entries = S.entries.filter(x => x.id !== id); save(); draft = null; editId = null; setView("tage"); }
+    else { b.dataset.confirm = "1"; b.textContent = "Wirklich löschen?"; }
+  } else if (act === "save-client") {
+    const g = k => document.getElementById(k).value.trim();
+    if (!g("c-name")) return;
+    const data = { name: g("c-name"), kasse: g("c-kasse"), vers: g("c-vers"), et: g("c-et"), birth: g("c-birth"), kids: +g("c-kids") || 1 };
+    if (editClient && editClient.id) Object.assign(client(editClient.id), data); else S.clients.push({ id: uid(), ...data });
+    editClient = null; save(); render();
+  } else if (act === "edit-client") { editClient = { ...client(id) }; render(); window.scrollTo(0, 0); }
+  else if (act === "cancel-client") { editClient = null; render(); }
+  else if (act === "del-client") {
+    if (S.entries.some(e => e.clientId === id)) { b.textContent = "Hat noch Termine"; return; }
+    if (b.dataset.confirm) { S.clients = S.clients.filter(c => c.id !== id); editClient = null; save(); render(); }
+    else { b.dataset.confirm = "1"; b.textContent = "Wirklich löschen?"; }
+  } else if (act === "clear-demo") { S = { clients: [], entries: [] }; save(); draft = null; render(); }
+  else if (act === "export") {
+    const txt = JSON.stringify(S), io = document.getElementById("io");
+    io.hidden = false; io.value = txt;
+    navigator.clipboard?.writeText(txt).then(() => { b.textContent = "Kopiert"; }, () => { io.select(); b.textContent = "Text markiert, bitte kopieren"; });
+  } else if (act === "show-import") {
+    const io = document.getElementById("io"); io.hidden = false; io.value = ""; io.focus();
+    document.getElementById("io-actions").hidden = false;
+  } else if (act === "do-import") {
+    try { const d = JSON.parse(document.getElementById("io").value); if (!Array.isArray(d.clients) || !Array.isArray(d.entries)) throw 0; S = migrate(d); save(); render(); }
+    catch (e) { b.textContent = "Das ist keine gültige Sicherung"; }
+  }
+});
+/* ===== Lokale KI: Aufnahme → Parakeet → Sprachmodell → Felder ===== */
+const KI_KEY = "hebammen-logbuch-ki";
+const KI_MODELS = { "Qwen2.5-1.5B-Instruct": "Qwen 2.5 1.5B (empfohlen, ca. 1 GB)", "Qwen2.5-3B-Instruct": "Qwen 2.5 3B (genauer, ca. 2 GB)", "Llama-3.2-1B-Instruct": "Llama 3.2 1B (am schnellsten)" };
+let kiCfg = {};
+try { kiCfg = JSON.parse(localStorage.getItem(KI_KEY)) || {}; } catch (e) {}
+const kiSave = () => { try { localStorage.setItem(KI_KEY, JSON.stringify(kiCfg)); } catch (e) {} };
+let KI = null, rec = null, recChunks = [], lastText = "";
+const ki = { state: "aus", msg: "", progress: 0, llm: false, busy: "", last: "", note: "" };
+
+function kiBox() {
+  if (ki.state === "aus") return `<h2>Diktieren</h2>
+    <div class="hint">Die Spracherkennung läuft direkt auf dem Handy, es geht nichts ins Internet. Dafür einmalig etwa 410 MB herunterladen, am besten im WLAN.</div>
+    <label class="checks"><label><input type="checkbox" id="ki-llm" ${kiCfg.llm ? "checked" : ""}>Zusätzlich KI-Sprachmodell für Lücken (experimentell, ca. 1 GB, langsam)</label></label>
+    <label class="f" ${kiCfg.llm ? "" : "hidden"} id="ki-model-wrap">Sprachmodell<select id="ki-model">${Object.entries(KI_MODELS).map(([k, v]) => `<option value="${k}" ${(kiCfg.model || "Qwen2.5-1.5B-Instruct") === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+    <div class="row"><button class="primary" data-act="ki-start">Spracherkennung einrichten</button></div>`;
+  if (ki.state === "laden") return `<h2>Diktieren</h2><div class="hint">${esc(ki.msg)}</div><div class="bar"><span style="width:${Math.round((ki.progress || 0) * 100)}%"></span></div>`;
+  if (ki.state === "fehler") return `<h2>Diktieren</h2><div class="issue err">${esc(ki.msg)}</div><div class="row"><button data-act="ki-start">Nochmal versuchen</button></div>`;
+  return `<button class="mic ${rec ? "on" : ""}" data-act="mic" ${ki.busy ? "disabled" : ""}>${rec ? "Fertig gesprochen" : ki.busy ? esc(ki.busy) : "Aufnehmen"}</button>
+    <div class="hint">${esc(ki.last || (ki.llm ? "Spracherkennung und Zuordnung bereit." : "Spracherkennung bereit."))}</div>
+    ${ki.note ? `<div class="hint">${esc(ki.note)}</div>` : ""}${ki.msg ? `<div class="issue warn">${esc(ki.msg)}</div>` : ""}`;
+}
+function kiRender() { const el = document.getElementById("ki-box"); if (el) el.innerHTML = kiBox(); }
+
+async function kiStart() {
+  ki.state = "laden"; ki.msg = "Starte …"; ki.progress = 0; kiRender();
+  try {
+    KI = KI || await import("./vendor/ki.bundle.js");
+    const dev = await KI.deviceInfo();
+    if (!dev.webgpu) ki.note = "Dieser Browser kann kein WebGPU. Die Spracherkennung läuft langsamer über den Prozessor.";
+    await KI.loadSpeech((t, p) => { ki.msg = t; ki.progress = p; kiRender(); });
+    if (dev.webgpu && kiCfg.llm) {
+      await KI.loadLLM(kiCfg.model || "Qwen2.5-1.5B-Instruct", (t, p) => { ki.msg = "Sprachmodell: " + t; ki.progress = p; kiRender(); });
+      ki.llm = true;
+    }
+    ki.state = "bereit"; ki.msg = ""; kiCfg.enabled = true; kiSave();
+  } catch (e) { console.error(e); ki.state = "fehler"; ki.msg = "KI konnte nicht geladen werden: " + (e.message || e); }
+  kiRender();
+}
+
+async function recToggle() {
+  if (rec) { rec.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }); }
+  catch (e) { ki.msg = "Kein Zugriff aufs Mikrofon. Bitte in den Chrome-Einstellungen für diese Seite erlauben."; kiRender(); return; }
+  recChunks = [];
+  rec = new MediaRecorder(stream);
+  rec.ondataavailable = e => recChunks.push(e.data);
+  rec.onstop = () => {
+    stream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(recChunks, { type: rec.mimeType });
+    rec = null; processAudio(blob);
+  };
+  rec.start(); ki.msg = ""; kiRender();
+}
+
+async function processAudio(blob) {
+  ki.busy = "Wandle Sprache in Text um …"; kiRender();
+  const t0 = performance.now();
+  try {
+    const text = await KI.transcribe(blob);
+    if (!text) { ki.busy = ""; ki.msg = "Nichts verstanden. Bitte nochmal und etwas näher am Handy sprechen."; kiRender(); return; }
+    lastText = text;
+    await analyse(text, Math.round(performance.now() - t0));
+  } catch (e) { console.error(e); ki.busy = ""; ki.msg = "Fehler bei der Spracherkennung: " + (e.message || e); kiRender(); }
+}
+
+async function analyse(text, asrMs) {
+  let d = parseNote(text), llmMs = null;
+  ki.msg = "";
+  if (ki.llm) {
+    ki.busy = "Ordne zu …"; kiRender();
+    try { const r = await KI.extract(text, kiCtx()); llmMs = r.ms; d = mergeLLM(r.data, d, text); }
+    catch (e) { console.warn(e); ki.msg = "Zuordnung per KI fehlgeschlagen, einfache Erkennung benutzt."; }
+  }
+  ki.busy = "";
+  ki.last = [asrMs != null && `Spracherkennung ${(asrMs / 1000).toFixed(1).replace(".", ",")} s`, llmMs != null && `Zuordnung ${(llmMs / 1000).toFixed(1).replace(".", ",")} s`].filter(Boolean).join(" · ");
+  draft = d; editId = null; render();
+}
+
+function kiCtx() {
+  const t = today();
+  return { today: t, yesterday: addDays(t, -1), weekday: ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"][parseISO(t).getUTCDay()], names: S.clients.map(c => c.name) };
+}
+
+// Das KI-Sprachmodell füllt nur Lücken; was die Regel-Erkennung gefunden hat, bleibt stehen.
+// Im Test hat ein 1,5B-Modell Zeiten und Material erfunden, deshalb kein Überschreiben.
+function mergeLLM(x, fb, text) {
+  const okTime = s => /^\d{1,2}:\d{2}$/.test(s || "") && toMin(s) < 1440;
+  const norm = s => s.length === 4 ? "0" + s : s;
+  const d = { ...fb, note: text };
+  if (!d.clientId) {
+    const name = (x.frau || "").toLowerCase().trim(), first = name.split(/\s+/)[0];
+    const c = S.clients.find(c => c.name.toLowerCase() === name) || (first && S.clients.find(c => c.name.toLowerCase().split(/\s+/)[0] === first));
+    if (c) d.clientId = c.id;
+  }
+  if (!d.start && okTime(x.beginn)) d.start = norm(x.beginn);
+  if (!d.end && okTime(x.ende)) d.end = norm(x.ende);
+  if (!d.km && x.km > 0) d.km = String(x.km);
+  if (!d.leistung) {
+    const cl = client(d.clientId), since = cl && cl.birth ? diffDays(d.date, cl.birth) : null;
+    const map = { schwangerschaft: "ss_hilfe", vorsorge: "ss_vorsorge", aufklaerung: "ss_aufkl", stillvorbereitung: "ss_still" };
+    if (since != null && since >= 0) d.leistung = since < RULES.earlyDays ? "wb_frueh" : since <= RULES.lateEndDays ? "wb_spaet" : "still";
+    else if (map[x.bereich]) d.leistung = map[x.bereich];
+  }
+  const L = LEISTUNGEN[d.leistung];
+  if (L && !L.arts.includes(+d.art)) d.art = L.arts[0];
+  return d;
+}
+
+S = load();
+render();
+if (kiCfg.enabled) kiStart();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+navigator.storage?.persist?.().catch(() => {});
+</script>
+</body>
+</html>
