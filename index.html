@@ -93,8 +93,9 @@ table.bogen th.side, table.bogen td.side { border-left: 3px double var(--muted) 
 table.bogen tr.dash td { border-bottom: 1px dashed var(--muted) }
 tr.done td { opacity: .45 }
 tr.done td:first-child { opacity: 1 }
-.form-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px; font-size: .88rem; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px }
+.form-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 4px 12px; font-size: .88rem; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px }
 .form-head span { color: var(--muted); font-size: .75rem; display: block }
+.form-head span.miss { display: inline; color: var(--warn); font-size: .88rem; font-weight: 700 }
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); z-index: 5 }
 nav.tabs button { border: 0; border-radius: 0; background: transparent; padding: 12px 4px; font-size: .85rem; color: var(--muted); position: relative }
 nav.tabs button[aria-current="page"] { color: var(--accent) }
@@ -363,6 +364,11 @@ function parseNote(txt) {
   const words = { zwei: 2, drei: 3, vier: 4, fünf: 5 };
   const rt = t.match(/(\d|zwei|drei|vier|fünf) (?:frauen|versicherte|besuche)/);
   if (rt) res.route = words[rt[1]] || +rt[1];
+  // Begründung für Wege über 25 km (§ 11), landet im Bogen unter „Begründungen und Vermerke“
+  const vt = txt.match(/vertretung (?:für|von) ([A-ZÄÖÜ][\wäöüß-]+(?: [A-ZÄÖÜ][\wäöüß-]+)?)/i);
+  if (vt) res.kmReason = `Vertretung von ${vt[1]}`;
+  else if (/hausgeburt/.test(t)) res.kmReason = "geplante Hausgeburt";
+  else if (/keine (andere )?hebamme/.test(t)) res.kmReason = "keine Hebamme im Umkreis von 25 km verfügbar";
   let rest = km ? t.replace(km[0], " ") : t;
   if (dm) rest = rest.replace(new RegExp(`\\b${dm[1]}\\.${dm[2]}(\\.${dm[3] || ""})?`), " ");
   const times = [], re = /(\d{1,2})\s*(?::|\.|uhr)\s*(\d{2})?(?!\d)/g;
@@ -555,8 +561,11 @@ function vFrauen() {
       <label class="f">Errechneter Termin<input id="c-et" type="date" value="${ec?.et || ""}"></label>
       <label class="f">Geburtsdatum Kind<input id="c-birth" type="date" value="${ec?.birth || ""}"></label>
       <label class="f">Kinder dieser Geburt<input id="c-kids" type="number" min="1" max="4" value="${ec?.kids || 1}"></label>
+      <label class="f">Geburtsdatum der Frau<input id="c-geb" type="date" value="${ec?.geb || ""}"></label>
+      <label class="f">Versicherten-Nr.<input id="c-vnr" value="${esc(ec?.vnr)}" autocapitalize="characters"></label>
+      <label class="f">Krankenkassen-IK<input id="c-kik" inputmode="numeric" value="${esc(ec?.kik)}"></label>
     </div>
-    <div class="hint">Der Vorname reicht. Vollständiger Name, Versichertennummer und Kassen-IK stehen erst auf dem Bogen.</div>
+    <div class="hint">Alles hier landet im Kopf des Abrechnungsbogens. Versicherten-Nr. und Kassen-IK stehen auf der Gesundheitskarte und lassen sich auch später ergänzen.</div>
     <div class="row"><button class="primary" data-act="save-client">Speichern</button>${ec && ec.id ? `<button class="ghost" data-act="cancel-client">Abbrechen</button><button class="ghost" data-act="del-client" data-id="${ec.id}">Löschen</button>` : ec ? `<button class="ghost" data-act="cancel-client">Verwerfen</button>` : ""}</div>
   </div>
   ${S.clients.map(c => {
@@ -566,6 +575,16 @@ function vFrauen() {
       ${meters(c)}
       <div><button class="small ghost" data-act="edit-client" data-id="${c.id}">Bearbeiten</button></div></div>`;
   }).join("")}
+  <div class="card"><h2>Meine Angaben für den Bogen</h2>
+    ${ki.state === "bereit" ? `<button class="mic ${rec && recTarget === "heb" ? "on" : ""}" data-act="mic-heb" ${ki.busy || (rec && recTarget !== "heb") ? "disabled" : ""}>${rec && recTarget === "heb" ? "Fertig gesprochen" : "Eigene Angaben diktieren"}</button>` : ""}
+    <div class="grid2">
+      <label class="f">Name, Vorname der Hebamme<input id="h-name" value="${esc(S.heb?.name)}"></label>
+      <label class="f">Heb-Nr.<input id="h-hebnr" value="${esc(S.heb?.hebnr)}"></label>
+      <label class="f">IK<input id="h-ik" inputmode="numeric" value="${esc(S.heb?.ik)}"></label>
+    </div>
+    ${hebNotice ? `<div class="issue info">${esc(hebNotice)}</div>` : ""}
+    <div class="hint">Einmal eintragen, wird automatisch gespeichert und erscheint auf jedem Bogen.</div>
+  </div>
   <div class="card"><h2>Daten sichern</h2>
     <div class="hint">Die Daten liegen nur auf diesem Handy. Einmal pro Woche eine Sicherung herunterladen und zum Beispiel in die Cloud oder per Kabel auf den PC legen.</div>
     <div class="row"><button data-act="download">Sicherung herunterladen</button><label class="f" style="flex:1">Sicherung laden<input id="import-file" type="file" accept="application/json,.json"></label></div>
@@ -583,6 +602,8 @@ const FORM_COLS = {
         mat: ["60300", "61100", "61400", "61500", "61600", "61700"], kurz: "30x04", strip: true },
 };
 const ROWS_PER_SHEET = 15;
+// „Anna Becker“ → „Becker, Anna“ wie im Formularfeld „Name, Vorname“
+const nameComma = n => n.includes(",") || !/\s/.test(n.trim()) ? esc(n) : esc(n.trim().replace(/^(.*)\s(\S+)$/, "$2, $1"));
 const tick = id => `<input type="checkbox" aria-label="abgeschrieben" data-act="toggle-done" data-id="${id}">`;
 function formTable(c, f, rows) {
   const F = FORM_COLS[f], main = rows.filter(e => +e.art !== 4), kurz = rows.filter(e => +e.art === 4);
@@ -592,32 +613,48 @@ function formTable(c, f, rows) {
   const sheet = (list, n) => `
     ${sheets.length > 1 ? `<div class="label">Bogen ${n} von ${sheets.length}</div>` : ""}
     <div class="tbl-wrap"><table class="bogen">
-      <thead><tr><th>✓</th><th>Z.</th><th>Datum</th><th>von</th><th>bis</th>${F.lei.map(([h]) => `<th class="c">${h}</th>`).join("")}${F.mat.map(code => `<th class="c">${code}</th>`).join("")}${F.strip ? `<th class="c side">61200 61300</th><th class="c">1. aufs.</th>` : ""}<th class="c ${F.strip ? "" : "side"}">Vers. / km</th><th>Prüfung</th></tr></thead>
+      <thead><tr><th>✓</th><th>Z.</th><th>Heb-Nr.</th><th>Datum</th><th>von</th><th>bis</th>${F.lei.map(([h]) => `<th class="c">${h}</th>`).join("")}${F.mat.map(code => `<th class="c">${code}</th>`).join("")}<th class="c">Begr.</th>${F.strip ? `<th class="c side">61200 61300</th><th class="c">1. aufs.</th>` : ""}<th class="c ${F.strip ? "" : "side"}">Vers. / km</th><th>Prüfung</th></tr></thead>
       <tbody>${list.map((e, i) => {
         const r = check(e), L = LEISTUNGEN[e.leistung], bad = r.issues.some(x => x[0] === "err");
         const mp = r.auto.find(a => a[0] === "61200" || a[0] === "61300");
         const route = Math.max(1, +e.route || 1);
         const notes = [r.codes.join(" + ") + ` · ${r.billUnits} Einh.`, r.surcharge ? `${r.surcharge} Min. Zuschlag` : "", e.kmReason].filter(Boolean);
         return `<tr class="${e.done ? "done" : ""} ${(i + 1) % 5 === 0 && i + 1 < ROWS_PER_SHEET ? "dash" : ""}">
-          <td>${tick(e.id).replace(">", e.done ? " checked>" : ">")}</td><td class="num muted">${i + 1}</td>
+          <td>${tick(e.id).replace(">", e.done ? " checked>" : ">")}</td><td class="num muted">${i + 1}</td><td class="num">${esc(S.heb?.hebnr || "")}</td>
           <td class="num">${de(e.date)}</td><td class="num">${e.start}</td><td class="num">${e.end}</td>
           ${F.lei.map(([, keys]) => `<td class="code c">${keys.includes(e.leistung) ? e.art : ""}</td>`).join("")}
           ${F.mat.map(code => `<td class="code c">${(e.mat || []).includes(code) ? "X" : ""}</td>`).join("")}
+          <td class="code c">${e.kmReason ? "X" : ""}</td>
           ${F.strip ? `<td class="code c side">${mp ? "X" : ""}</td><td class="code c">${mp ? "X" : ""}</td>` : ""}
           <td class="code c ${F.strip ? "" : "side"}">${e.km && +e.art === 1 ? `${route} / ${e.km}` : ""}</td>
           <td class="num" style="font-size:.78rem">${notes.map(esc).join("<br>")}${bad ? ` <span class="pill err">Fehler</span>` : ""}</td></tr>`;
       }).join("")}</tbody>
     </table></div>`;
+  // Kopf wie auf dem Formular; fehlende Angaben auffällig markieren
+  const val = (v, fmt = x => esc(x)) => v ? fmt(v) : `<span class="miss">fehlt</span>`;
+  const reasons = main.map((e, i) => e.kmReason ? `Zeile ${(i % ROWS_PER_SHEET) + 1}${sheets.length > 1 ? ` (Bogen ${Math.floor(i / ROWS_PER_SHEET) + 1})` : ""}: ${e.kmReason}` : "").filter(Boolean);
+  const missing = [!c.geb && "Geburtsdatum der Frau", !c.vnr && "Versicherten-Nr.", !c.kik && "Kassen-IK", !S.heb?.name && "Name der Hebamme", !S.heb?.hebnr && "Heb-Nr.", !S.heb?.ik && "IK der Hebamme"].filter(Boolean);
   return `<div class="card">
     <div class="entry-head"><h2>${esc(c.name)}</h2><span class="label">${FORM_NAME[f]}</span></div>
     <div class="form-head">
-      <div><span>Versicherung</span>${esc(c.vers || "GKV")}</div>
-      <div><span>Krankenkasse</span>${esc(c.kasse) || "–"}</div>
-      <div><span>Errechneter Termin</span>${c.et ? de(c.et) : "–"}</div>
-      <div><span>Geburtsdatum Kind</span>${c.birth ? de(c.birth) : "–"}</div>
-      ${f === "wb" && +c.kids > 1 ? `<div><span>Mehrlinge, Kinder gesamt</span>${c.kids}</div>` : ""}
+      <div><span>Krankenkasse bzw. Kostenträger</span>${val(c.kasse)}</div>
+      <div><span>Name, Vorname der Versicherten</span>${val(c.name, nameComma)}</div>
+      <div><span>geb. am</span>${val(c.geb, de)}</div>
+      <div><span>Krankenkassen-IK</span>${val(c.kik)}</div>
+      <div><span>Versicherten-Nr.</span>${val(c.vnr)}</div>
+      <div><span>Errechneter Termin</span>${val(c.et, de)}</div>
+      <div><span>Geburtsdatum Kind</span>${f === "wb" ? val(c.birth, de) : c.birth ? de(c.birth) : "–"}</div>
+      ${f === "wb" ? `<div><span>Mehrlinge, Kinder gesamt</span>${+c.kids > 1 ? c.kids : "–"}</div>` : ""}
     </div>
+    <div class="form-head">
+      <div><span>Name, Vorname der Hebamme</span>${val(S.heb?.name)}</div>
+      <div><span>Heb-Nr.</span>${val(S.heb?.hebnr)}</div>
+      <div><span>IK oder „angestellt“</span>${val(S.heb?.ik)}</div>
+      ${F.strip ? `<div><span>Versicherungsverhältnis (Seitenleiste)</span>${c.vers === "PKV" ? "PKV (priv.)" : c.vers === "Selbstzahler" ? "Selbstzahler" : "GKV (gesetzl.)"}</div>` : ""}
+    </div>
+    ${missing.length ? `<div class="issue warn">Für den Bogen fehlt noch: ${missing.join(", ")}. Unter „Frauen“ ergänzen oder diktieren.</div>` : ""}
     ${sheets.map((l, i) => sheet(l, i + 1)).join("")}
+    ${reasons.length ? `<div class="label">Begründungen und Vermerke</div><div class="hint">${reasons.map(esc).join("<br>")}</div>` : ""}
     ${kurz.length ? `<div class="label">Seitenleiste: Kurzberatung (${F.kurz})</div>
     <div class="tbl-wrap"><table class="bogen"><thead><tr><th>✓</th><th>Datum</th><th>von</th><th>bis</th><th>Prüfung</th></tr></thead><tbody>
       ${kurz.map(e => { const r = check(e); return `<tr class="${e.done ? "done" : ""}"><td>${tick(e.id).replace(">", e.done ? " checked>" : ">")}</td><td class="num">${de(e.date)}</td><td class="num">${e.start}</td><td class="num">${e.end}</td><td class="num" style="font-size:.78rem">${r.codes.join("")} · ${r.billUnits} Einh.</td></tr>`; }).join("")}
@@ -663,6 +700,7 @@ $app.addEventListener("change", ev => {
     render();
   }
   if (id === "ki-llm") document.getElementById("ki-model-wrap").hidden = !ev.target.checked;
+  if (id.startsWith("h-")) { S.heb = { ...(S.heb || {}), [id.slice(2)]: ev.target.value.trim() }; save(); }
   if (id === "import-file" && ev.target.files[0]) {
     ev.target.files[0].text().then(txt => {
       try { const d = JSON.parse(txt); if (!Array.isArray(d.clients) || !Array.isArray(d.entries)) throw 0; S = migrate(d); save(); render(); }
@@ -709,13 +747,14 @@ $app.addEventListener("click", ev => {
   } else if (act === "save-client") {
     const g = k => document.getElementById(k).value.trim();
     if (!g("c-name")) return;
-    const data = { name: g("c-name"), kasse: g("c-kasse"), vers: g("c-vers"), et: g("c-et"), birth: g("c-birth"), kids: +g("c-kids") || 1 };
+    const data = { name: g("c-name"), kasse: g("c-kasse"), vers: g("c-vers"), et: g("c-et"), birth: g("c-birth"), kids: +g("c-kids") || 1, geb: g("c-geb"), vnr: g("c-vnr").toUpperCase(), kik: g("c-kik") };
     if (editClient && editClient.id) Object.assign(client(editClient.id), data); else S.clients.push({ id: uid(), ...data });
     editClient = null; clientText = ""; clientNotice = ""; save(); render();
   } else if (act === "edit-client") { editClient = { ...client(id) }; clientText = ""; clientNotice = ""; render(); window.scrollTo(0, 0); }
   else if (act === "cancel-client") { editClient = null; clientText = ""; clientNotice = ""; render(); }
   else if (act === "parse-client") { const t = document.getElementById("c-diktat").value.trim(); if (t) applyClientText(t); }
   else if (act === "mic-frau") { recToggle("frau"); }
+  else if (act === "mic-heb") { recToggle("heb"); }
   else if (act === "del-client") {
     if (S.entries.some(e => e.clientId === id)) { b.textContent = "Hat noch Termine"; return; }
     if (b.dataset.confirm) { S.clients = S.clients.filter(c => c.id !== id); editClient = null; save(); render(); }
@@ -739,7 +778,7 @@ const KI_MODELS = { "Qwen2.5-1.5B-Instruct": "Qwen 2.5 1.5B (empfohlen, ca. 1 GB
 let kiCfg = {};
 try { kiCfg = JSON.parse(localStorage.getItem(KI_KEY)) || {}; } catch (e) {}
 const kiSave = () => { try { localStorage.setItem(KI_KEY, JSON.stringify(kiCfg)); } catch (e) {} };
-let KI = null, rec = null, recChunks = [], lastText = "", recTarget = "termin", clientText = "", clientNotice = "";
+let KI = null, rec = null, recChunks = [], lastText = "", recTarget = "termin", clientText = "", clientNotice = "", hebNotice = "";
 const ki = { state: "aus", msg: "", progress: 0, llm: false, busy: "", last: "", note: "" };
 
 function kiBox() {
@@ -799,6 +838,7 @@ async function processAudio(blob) {
     const text = await KI.transcribe(blob);
     if (!text) { ki.busy = ""; ki.msg = "Nichts verstanden. Bitte nochmal und etwas näher am Handy sprechen."; refresh(); return; }
     if (recTarget === "frau") { ki.busy = ""; applyClientText(text); return; }
+    if (recTarget === "heb") { ki.busy = ""; applyHebText(text); return; }
     lastText = text;
     await analyse(text, Math.round(performance.now() - t0));
   } catch (e) { console.error(e); ki.busy = ""; ki.msg = "Fehler bei der Spracherkennung: " + (e.message || e); refresh(); }
@@ -855,11 +895,20 @@ function parseClient(txt) {
       else y = diffDays(iso(ty), today()) > 14 ? ty - 1 : ty;
     }
     const v = iso(y);
-    if (kind === "birth" && Math.abs(diffDays(v, today())) > 400) continue;  // eher das Geburtsdatum der Mutter
+    if (kind === "birth" && Math.abs(diffDays(v, today())) > 400) {  // Jahrgang der Frau, nicht des Kindes
+      if (!out.geb && x.y) { out.geb = v; found.push(`Frau geb. ${de(v)}`); }
+      continue;
+    }
     if (!out[kind]) { out[kind] = v; found.push(kind === "et" ? `ET ${de(v)}` : `Geburt ${de(v)}`); }
   }
   // Geburt auch relativ: „heute/gestern/vorgestern geboren“
   if (!out.birth) { const r = t.match(/(heute|gestern|vorgestern) (geboren|entbunden|zur welt)|(geboren|entbunden) (heute|gestern|vorgestern)/); if (r) { const w = r[1] || r[4]; out.birth = addDays(today(), w === "heute" ? 0 : w === "gestern" ? -1 : -2); found.push(`Geburt ${de(out.birth)}`); } }
+
+  // Versicherten-Nr.: ein Buchstabe und neun Ziffern; Kassen-IK: neun Ziffern
+  const vn = t.match(/versicherten\s?(?:nummer|nr)\.?\s*(?:ist\s)?([a-z])\s?((?:\d\s?){9})/);
+  if (vn) { out.vnr = (vn[1] + vn[2].replace(/\s/g, "")).toUpperCase(); found.push(`Vers.-Nr. ${out.vnr}`); }
+  const ik = t.match(/(?:kassen\s?ik|ik\s?(?:nummer|nr)?|institutionskennzeichen)\.?\s*(?:ist\s)?((?:\d\s?){9})/);
+  if (ik) { out.kik = ik[1].replace(/\s/g, ""); found.push(`Kassen-IK ${out.kik}`); }
 
   if (/zwilling/.test(t)) out.kids = 2; else if (/drilling/.test(t)) out.kids = 3;
   else { const k = t.match(/ (\d) (kinder|babys)/); if (k && +k[1] > 1 && +k[1] < 5) out.kids = +k[1]; }
@@ -870,16 +919,32 @@ function parseClient(txt) {
   for (const [rx, name] of KASSEN) { const k = t.match(rx); if (k) { out.kasse = typeof name === "function" ? name(k) : name; found.push(out.kasse); break; } }
 
   // Name: erster Abschnitt, mit Großbuchstaben aus dem Original
-  const first = txt.replace(/^\s*(neue frau|frau|name|neu)\s*[:,]?\s*/i, "").split(/[,.;]| ist | bei | hat | errechnet| et | termin| geboren| kasse| versichert| krankenkasse| aok| tk\b| techniker| barmer| dak\b| ikk| \S*bkk| kkh| hkk| hek\b| knappschaft| privat| gesetzlich| zwilling| drilling/i)[0].trim();
+  const first = txt.replace(/^\s*(neue frau|frau|name|neu)\s*[:,]?\s*/i, "").split(/[,.;]| ist | bei | hat | errechnet| et | termin| geboren| kasse| versichert| krankenkasse| ik\b| institution| aok| tk\b| techniker| barmer| dak\b| ikk| \S*bkk| kkh| hkk| hek\b| knappschaft| privat| gesetzlich| zwilling| drilling/i)[0].trim();
   const words = first.split(/\s+/).filter(w => w && !KASSEN.some(([rx]) => rx.test(w.toLowerCase()))).slice(0, 3);
   if (words.length && words.every(w => /^[A-ZÄÖÜ][a-zäöüß-]+\.?$/.test(w) || /^[A-ZÄÖÜ]\.?$/.test(w))) { out.name = words.join(" "); found.unshift(out.name); }
   return { data: out, found };
 }
 
+// „Ich bin Maria Muster, Hebammennummer 4711, IK 123456789“
+function applyHebText(text) {
+  readClientForm();
+  const t = normalizeSpoken(text), h = { ...(S.heb || {}) }, found = [];
+  const nr = t.match(/(?:hebammen\s?(?:nummer|nr)|heb\s?-?\s?(?:nummer|nr))\.?\s*(?:ist\s)?((?:\d\s?)+)/);
+  if (nr) { h.hebnr = nr[1].replace(/\s/g, ""); found.push(`Heb-Nr. ${h.hebnr}`); }
+  const ik = t.match(/(?:\bik\b|institutionskennzeichen)\s?(?:nummer|nr)?\.?\s*(?:ist\s)?((?:\d\s?){9})/);
+  if (ik) { h.ik = ik[1].replace(/\s/g, ""); found.push(`IK ${h.ik}`); }
+  const nm = text.replace(/^\s*(ich bin|ich heiße|name)\s*:?\s*/i, "").split(/[,.;]| hebammen| heb| ik\b| institution/i)[0].trim();
+  if (/^[A-ZÄÖÜ][\wäöüß-]+(\s[A-ZÄÖÜ][\wäöüß-]+){1,2}$/.test(nm)) { const p = nm.split(/\s+/); h.name = `${p[p.length - 1]}, ${p.slice(0, -1).join(" ")}`; found.unshift(h.name); }
+  S.heb = h; save();
+  hebNotice = found.length ? `Übernommen: ${found.join(", ")}.` : "Nichts erkannt. Etwa so: Ich bin Maria Muster, Hebammennummer 4711, IK 123456789.";
+  render();
+}
+
 function readClientForm() {
   const g = id => document.getElementById(id);
   if (!g("c-name")) return;
-  editClient = { ...(editClient || {}), name: g("c-name").value.trim(), kasse: g("c-kasse").value.trim(), vers: g("c-vers").value, et: g("c-et").value, birth: g("c-birth").value, kids: +g("c-kids").value || 1 };
+  editClient = { ...(editClient || {}), name: g("c-name").value.trim(), kasse: g("c-kasse").value.trim(), vers: g("c-vers").value, et: g("c-et").value, birth: g("c-birth").value, kids: +g("c-kids").value || 1,
+    geb: g("c-geb").value, vnr: g("c-vnr").value.trim(), kik: g("c-kik").value.trim() };
   clientText = g("c-diktat").value;
 }
 

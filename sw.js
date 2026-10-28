@@ -1,6 +1,6 @@
 // Offline-Betrieb: App-Dateien und Schriften aus dem Cache.
 // Die KI-Modelle legen ki.js bzw. WebLLM selbst in eigenen Caches ab.
-const VERSION = "hlb-app-v2";
+const VERSION = "hlb-app-v3";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "vendor/ki.bundle.js"];
 const CACHE_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdn.jsdelivr.net"];
 
