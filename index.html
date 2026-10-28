@@ -540,10 +540,14 @@ function meters(c) {
 }
 
 function vFrauen() {
-  const ec = editClient;
+  const ec = editClient, recHere = rec && recTarget === "frau";
   return header("Frauen", `${S.clients.length} betreut`) + `
   <div class="card">
     <h2>${ec && ec.id ? "Frau bearbeiten" : "Neue Frau"}</h2>
+    ${ki.state === "bereit" ? `<button class="mic ${recHere ? "on" : ""}" data-act="mic-frau" ${ki.busy || (rec && !recHere) ? "disabled" : ""}>${recHere ? "Fertig gesprochen" : ki.busy ? esc(ki.busy) : "Angaben diktieren"}</button>` : ""}
+    <label class="f">Angaben als Text<textarea id="c-diktat" rows="2" placeholder="Anna Becker, TK, errechneter Termin 12. Dezember, Kind geboren am 3. Dezember, Zwillinge">${esc(clientText)}</textarea></label>
+    <div class="row"><button data-act="parse-client">In die Felder übernehmen</button>${ki.state === "bereit" ? "" : `<span class="hint">Zum Diktieren unter „Erfassen“ die Spracherkennung einrichten oder die Mikrofon-Taste der Tastatur nutzen.</span>`}</div>
+    ${clientNotice ? `<div class="issue info">${esc(clientNotice)}</div>` : ""}${view === "frauen" && ki.msg ? `<div class="issue warn">${esc(ki.msg)}</div>` : ""}
     <div class="grid2">
       <label class="f">Name oder Kürzel<input id="c-name" value="${esc(ec?.name)}" placeholder="Vorname + Initial"></label>
       <label class="f">Krankenkasse<input id="c-kasse" value="${esc(ec?.kasse)}"></label>
@@ -553,7 +557,7 @@ function vFrauen() {
       <label class="f">Kinder dieser Geburt<input id="c-kids" type="number" min="1" max="4" value="${ec?.kids || 1}"></label>
     </div>
     <div class="hint">Der Vorname reicht. Vollständiger Name, Versichertennummer und Kassen-IK stehen erst auf dem Bogen.</div>
-    <div class="row"><button class="primary" data-act="save-client">Speichern</button>${ec && ec.id ? `<button class="ghost" data-act="cancel-client">Abbrechen</button><button class="ghost" data-act="del-client" data-id="${ec.id}">Löschen</button>` : ""}</div>
+    <div class="row"><button class="primary" data-act="save-client">Speichern</button>${ec && ec.id ? `<button class="ghost" data-act="cancel-client">Abbrechen</button><button class="ghost" data-act="del-client" data-id="${ec.id}">Löschen</button>` : ec ? `<button class="ghost" data-act="cancel-client">Verwerfen</button>` : ""}</div>
   </div>
   ${S.clients.map(c => {
     const n = S.entries.filter(e => e.clientId === c.id).length;
@@ -707,9 +711,11 @@ $app.addEventListener("click", ev => {
     if (!g("c-name")) return;
     const data = { name: g("c-name"), kasse: g("c-kasse"), vers: g("c-vers"), et: g("c-et"), birth: g("c-birth"), kids: +g("c-kids") || 1 };
     if (editClient && editClient.id) Object.assign(client(editClient.id), data); else S.clients.push({ id: uid(), ...data });
-    editClient = null; save(); render();
-  } else if (act === "edit-client") { editClient = { ...client(id) }; render(); window.scrollTo(0, 0); }
-  else if (act === "cancel-client") { editClient = null; render(); }
+    editClient = null; clientText = ""; clientNotice = ""; save(); render();
+  } else if (act === "edit-client") { editClient = { ...client(id) }; clientText = ""; clientNotice = ""; render(); window.scrollTo(0, 0); }
+  else if (act === "cancel-client") { editClient = null; clientText = ""; clientNotice = ""; render(); }
+  else if (act === "parse-client") { const t = document.getElementById("c-diktat").value.trim(); if (t) applyClientText(t); }
+  else if (act === "mic-frau") { recToggle("frau"); }
   else if (act === "del-client") {
     if (S.entries.some(e => e.clientId === id)) { b.textContent = "Hat noch Termine"; return; }
     if (b.dataset.confirm) { S.clients = S.clients.filter(c => c.id !== id); editClient = null; save(); render(); }
@@ -733,7 +739,7 @@ const KI_MODELS = { "Qwen2.5-1.5B-Instruct": "Qwen 2.5 1.5B (empfohlen, ca. 1 GB
 let kiCfg = {};
 try { kiCfg = JSON.parse(localStorage.getItem(KI_KEY)) || {}; } catch (e) {}
 const kiSave = () => { try { localStorage.setItem(KI_KEY, JSON.stringify(kiCfg)); } catch (e) {} };
-let KI = null, rec = null, recChunks = [], lastText = "";
+let KI = null, rec = null, recChunks = [], lastText = "", recTarget = "termin", clientText = "", clientNotice = "";
 const ki = { state: "aus", msg: "", progress: 0, llm: false, busy: "", last: "", note: "" };
 
 function kiBox() {
@@ -766,11 +772,15 @@ async function kiStart() {
   kiRender();
 }
 
-async function recToggle() {
+// Neu zeichnen, ohne Eingaben im Frauen-Formular zu verlieren
+function refresh() { if (view === "frauen") { readClientForm(); render(); } else kiRender(); }
+
+async function recToggle(target = "termin") {
   if (rec) { rec.stop(); return; }
+  recTarget = target;
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }); }
-  catch (e) { ki.msg = "Kein Zugriff aufs Mikrofon. Bitte in den Chrome-Einstellungen für diese Seite erlauben."; kiRender(); return; }
+  catch (e) { ki.msg = "Kein Zugriff aufs Mikrofon. Bitte in den Chrome-Einstellungen für diese Seite erlauben."; refresh(); return; }
   recChunks = [];
   rec = new MediaRecorder(stream);
   rec.ondataavailable = e => recChunks.push(e.data);
@@ -779,18 +789,107 @@ async function recToggle() {
     const blob = new Blob(recChunks, { type: rec.mimeType });
     rec = null; processAudio(blob);
   };
-  rec.start(); ki.msg = ""; kiRender();
+  rec.start(); ki.msg = ""; refresh();
 }
 
 async function processAudio(blob) {
-  ki.busy = "Wandle Sprache in Text um …"; kiRender();
+  ki.busy = "Wandle Sprache in Text um …"; refresh();
   const t0 = performance.now();
   try {
     const text = await KI.transcribe(blob);
-    if (!text) { ki.busy = ""; ki.msg = "Nichts verstanden. Bitte nochmal und etwas näher am Handy sprechen."; kiRender(); return; }
+    if (!text) { ki.busy = ""; ki.msg = "Nichts verstanden. Bitte nochmal und etwas näher am Handy sprechen."; refresh(); return; }
+    if (recTarget === "frau") { ki.busy = ""; applyClientText(text); return; }
     lastText = text;
     await analyse(text, Math.round(performance.now() - t0));
-  } catch (e) { console.error(e); ki.busy = ""; ki.msg = "Fehler bei der Spracherkennung: " + (e.message || e); kiRender(); }
+  } catch (e) { console.error(e); ki.busy = ""; ki.msg = "Fehler bei der Spracherkennung: " + (e.message || e); refresh(); }
+}
+
+/* ===== Frau per Diktat anlegen ===== */
+const MONTHS = { januar: 1, jänner: 1, februar: 2, märz: 3, april: 4, mai: 5, juni: 6, juli: 7, august: 8, september: 9, oktober: 10, november: 11, dezember: 12 };
+const ORD = { erste: 1, ersten: 1, zweite: 2, dritte: 3, vierte: 4, fünfte: 5, sechste: 6, siebte: 7, siebente: 7, achte: 8, neunte: 9, zehnte: 10, elfte: 11, zwölfte: 12 };
+const KASSEN = [[/techniker|\btk\b/, "TK"], [/barmer/, "Barmer"], [/\bdak\b/, "DAK"], [/\bkkh\b/, "KKH"], [/\bhkk\b/, "hkk"], [/\bhek\b/, "HEK"], [/knappschaft/, "Knappschaft"],
+  [/\bsbk\b/, "SBK"], [/viactiv/, "Viactiv"], [/mobil/, "BKK Mobil"], [/\bikk ?(classic|südwest|gesund plus|innovationskasse)?/, m => ("IKK " + (m[1] || "")).trim()],
+  [/\baok ?(bayern|plus|nordost|nordwest|niedersachsen|hessen|rheinland\/hamburg|rheinland-pfalz\/saarland|baden-württemberg|sachsen-anhalt|bremen\/bremerhaven)?/, m => ("AOK " + (m[1] ? m[1][0].toUpperCase() + m[1].slice(1) : "")).trim()],
+  [/([a-zäöü0-9+]+ )?bkk( [a-zäöü0-9+]+)?/, m => {
+    const stop = /^(die|der|bei|ist|und|frau|kasse|krankenkasse|versichert|errechnet\w*|et|\w*termin|entbindung\w*|kind|geboren|geburt\w*|sie|von|in|zwillinge|drillinge)$/;
+    return [m[1], "bkk", m[2]].filter(Boolean).map(w => w.trim()).filter(w => w === "bkk" || !stop.test(w))
+      .map(w => w === "bkk" ? "BKK" : w[0].toUpperCase() + w.slice(1)).join(" ");
+  }]];
+
+// Ordnungszahlen in Ziffern: „zwölfter Dezember“ → „12. dezember“, „dreiundzwanzigsten“ → „23.“
+function ordinalToNum(w) {
+  const s = w.replace(/(te[nrsm]?|ste[nrsm]?)$/, "");
+  if (ORD[w] || ORD[s + "te"]) return ORD[w] || ORD[s + "te"];
+  const m = s.match(/^(?:(ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun)und)?(zwanzig|dreißig)$/);
+  if (m) return (m[1] ? NUM[m[1]] : 0) + NUM[m[2]];
+  return NUM[s] || null;
+}
+
+function parseClient(txt) {
+  const out = {}, found = [];
+  let t = " " + txt.toLowerCase().replace(/[,;!?]/g, " , ").replace(/\s+/g, " ") + " ";
+  t = t.replace(/ ([a-zäöüß]+?(?:te[nrsm]?|ste[nrsm]?)) (?=(januar|jänner|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember))/g, (m, w) => { const n = ordinalToNum(w); return n ? ` ${n}. ` : m; });
+  t = normalizeSpoken(t).replace(/(\d)(?= (januar|jänner|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember))/g, "$1.");
+  // alle Daten mit Position finden
+  const dates = [], re = /(\d{1,2})\.\s?(?:(\d{1,2})\.?|(januar|jänner|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember))\s?(\d{4}|\d{2}(?![\d:]))?/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const d = +m[1], mo = m[2] ? +m[2] : MONTHS[m[3]];
+    if (d < 1 || d > 31 || !mo || mo > 12) continue;
+    dates.push({ d, mo, y: m[4] ? (m[4].length === 2 ? 2000 + +m[4] : +m[4]) : null, at: m.index });
+  }
+  const kindOf = at => {
+    const before = t.slice(Math.max(0, at - 60), at);
+    const et = Math.max(before.lastIndexOf("errechnet"), before.lastIndexOf(" et "), before.lastIndexOf("termin"), before.lastIndexOf("stichtag"), before.lastIndexOf("entbindungstermin"));
+    const gb = Math.max(before.lastIndexOf("geboren"), before.lastIndexOf("geburt"), before.lastIndexOf("entbunden"), before.lastIndexOf("kind kam"), before.lastIndexOf("auf die welt"));
+    if (et < 0 && gb < 0) return null;
+    return et > gb ? "et" : "birth";
+  };
+  for (const x of dates) {
+    const kind = kindOf(x.at); if (!kind) continue;
+    const iso = y => `${y}-${pad(x.mo)}-${pad(x.d)}`;
+    let y = x.y;
+    if (!y) {  // ohne Jahr: ET eher in der Zukunft, Geburt eher in der Vergangenheit
+      const ty = +today().slice(0, 4);
+      if (kind === "et") y = diffDays(iso(ty), today()) < -60 ? ty + 1 : ty;
+      else y = diffDays(iso(ty), today()) > 14 ? ty - 1 : ty;
+    }
+    const v = iso(y);
+    if (kind === "birth" && Math.abs(diffDays(v, today())) > 400) continue;  // eher das Geburtsdatum der Mutter
+    if (!out[kind]) { out[kind] = v; found.push(kind === "et" ? `ET ${de(v)}` : `Geburt ${de(v)}`); }
+  }
+  // Geburt auch relativ: „heute/gestern/vorgestern geboren“
+  if (!out.birth) { const r = t.match(/(heute|gestern|vorgestern) (geboren|entbunden|zur welt)|(geboren|entbunden) (heute|gestern|vorgestern)/); if (r) { const w = r[1] || r[4]; out.birth = addDays(today(), w === "heute" ? 0 : w === "gestern" ? -1 : -2); found.push(`Geburt ${de(out.birth)}`); } }
+
+  if (/zwilling/.test(t)) out.kids = 2; else if (/drilling/.test(t)) out.kids = 3;
+  else { const k = t.match(/ (\d) (kinder|babys)/); if (k && +k[1] > 1 && +k[1] < 5) out.kids = +k[1]; }
+  if (out.kids) found.push(`${out.kids} Kinder`);
+
+  if (/privat|pkv/.test(t)) out.vers = "PKV"; else if (/selbstzahler/.test(t)) out.vers = "Selbstzahler";
+  if (out.vers) found.push(out.vers);
+  for (const [rx, name] of KASSEN) { const k = t.match(rx); if (k) { out.kasse = typeof name === "function" ? name(k) : name; found.push(out.kasse); break; } }
+
+  // Name: erster Abschnitt, mit Großbuchstaben aus dem Original
+  const first = txt.replace(/^\s*(neue frau|frau|name|neu)\s*[:,]?\s*/i, "").split(/[,.;]| ist | bei | hat | errechnet| et | termin| geboren| kasse| versichert| krankenkasse| aok| tk\b| techniker| barmer| dak\b| ikk| \S*bkk| kkh| hkk| hek\b| knappschaft| privat| gesetzlich| zwilling| drilling/i)[0].trim();
+  const words = first.split(/\s+/).filter(w => w && !KASSEN.some(([rx]) => rx.test(w.toLowerCase()))).slice(0, 3);
+  if (words.length && words.every(w => /^[A-ZÄÖÜ][a-zäöüß-]+\.?$/.test(w) || /^[A-ZÄÖÜ]\.?$/.test(w))) { out.name = words.join(" "); found.unshift(out.name); }
+  return { data: out, found };
+}
+
+function readClientForm() {
+  const g = id => document.getElementById(id);
+  if (!g("c-name")) return;
+  editClient = { ...(editClient || {}), name: g("c-name").value.trim(), kasse: g("c-kasse").value.trim(), vers: g("c-vers").value, et: g("c-et").value, birth: g("c-birth").value, kids: +g("c-kids").value || 1 };
+  clientText = g("c-diktat").value;
+}
+
+function applyClientText(text) {
+  readClientForm();
+  const { data, found } = parseClient(text);
+  editClient = { ...(editClient || {}), ...data };
+  clientText = text;
+  clientNotice = found.length ? `Übernommen: ${found.join(", ")}. Bitte prüfen und speichern.` : "Nichts erkannt. Bitte etwa so sprechen: Name, Krankenkasse, errechneter Termin, Geburtsdatum Kind.";
+  render();
 }
 
 async function analyse(text, asrMs) {
